@@ -43,6 +43,7 @@ never has to guess which of many stored secrets to verify against.
 - Create: `web/.env.example`
 - Modify: `web/.gitignore`
 - Create: `web/prisma/schema.prisma`
+- Create: `web/prisma.config.ts`
 - Create: `web/lib/db.ts`
 - Create: `web/vitest.config.ts`
 - Create: `web/vitest.setup.ts`
@@ -54,11 +55,16 @@ never has to guess which of many stored secrets to verify against.
 - Produces: Prisma models `User`, `ResendConnection`, `Domain`, `Mailbox`,
   `Email` (exact fields below) available to every later task.
 
+Prisma ORM 7 is current (not 6 — `npm install prisma` resolves to 7+ by
+default, and 7 moved connection URLs out of `schema.prisma` into
+`prisma.config.ts`, and requires a driver adapter for SQL databases). This
+task targets 7 directly rather than pinning to 6.
+
 - [ ] **Step 1: Install dependencies**
 
 ```bash
-npm install @prisma/client resend better-auth
-npm install -D prisma vitest
+npm install @prisma/client@7 resend better-auth dotenv @prisma/adapter-pg pg
+npm install -D prisma@7 vitest @types/pg
 ```
 
 - [ ] **Step 2: Add env template and ignore local env files**
@@ -83,25 +89,21 @@ Confirm `.env*` is already ignored (it is — see `web/.gitignore`'s
 `# env files` block). No change needed there; this sub-step is just a
 verification, not an edit.
 
-- [ ] **Step 3: Initialize Prisma and write the schema**
+- [ ] **Step 3: Write the schema**
 
-```bash
-npx prisma init --datasource-provider postgresql
-```
-
-This creates `web/prisma/schema.prisma` with a default `datasource`/
-`generator` block and a `web/.env` with a placeholder `DATABASE_URL`. Replace
-the whole file with:
+Do **not** run `npx prisma init` — on Prisma 7 it scaffolds extra
+CLI-detected tooling this project doesn't want. Create
+`web/prisma/schema.prisma` directly:
 
 ```prisma
 generator client {
-  provider = "prisma-client-js"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 model User {
@@ -181,44 +183,86 @@ model Email {
 Auth) requires them on the core user model — adding them now avoids a
 schema churn later.
 
-- [ ] **Step 4: Point `DATABASE_URL` at your Supabase Postgres instance**
+- [ ] **Step 4: Write `prisma.config.ts`**
 
-Copy `.env.example` to `.env` and fill in `DATABASE_URL` from your Supabase
-project's connection string (Project Settings → Database → Connection
-string → URI, "Transaction" pooler mode). Leave the other vars blank for
-now — they're filled in by later tasks.
+Prisma 7 moved connection URLs out of `schema.prisma` and into a config
+file the CLI reads. `web/prisma.config.ts`:
 
-```bash
-cp .env.example .env
+```typescript
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+  },
+  datasource: {
+    url: env("DATABASE_URL"),
+    directUrl: env("DIRECT_URL"),
+  },
+});
 ```
 
-- [ ] **Step 5: Run the initial migration**
+`DATABASE_URL` is the pooled connection (pgbouncer, transaction mode) —
+used at runtime. `DIRECT_URL` is the direct connection — Supabase's pooler
+doesn't support the DDL/prepared statements `prisma migrate` needs, so the
+CLI uses `directUrl` for migrations instead.
+
+- [ ] **Step 5: Point `DATABASE_URL`/`DIRECT_URL` at your Supabase Postgres instance**
+
+Check whether `web/.env` already has real (non-placeholder) values for
+`DATABASE_URL` and `DIRECT_URL` before doing anything else — if it does,
+leave those two lines exactly as they are and skip straight to Step 6. Do
+**not** run `cp .env.example .env` if `web/.env` already exists with real
+values — that command would overwrite and destroy them. Only if
+`web/.env` doesn't exist yet: copy `.env.example` to `.env` and fill in
+both URLs from your Supabase project's connection string (Project Settings
+→ Database → Connection string): the pooled "Transaction" mode URI for
+`DATABASE_URL`, and the direct connection URI for `DIRECT_URL`.
+
+- [ ] **Step 6: Run the initial migration**
 
 ```bash
 npx prisma migrate dev --name init
 ```
 
 Expected: migration applies cleanly and `npx prisma validate` reports the
-schema is valid.
+schema is valid. If the target database already has unrelated tables in
+it, `prisma migrate dev` will refuse and suggest `prisma migrate reset`
+(which drops everything in the schema first) — **do not run `reset`
+yourself**; it's destructive and irreversible, so stop and report back
+for the user to decide, rather than guessing they meant to wipe it.
 
-- [ ] **Step 6: Prisma client singleton**
+- [ ] **Step 7: Prisma client singleton**
 
 `web/lib/db.ts`:
 ```typescript
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+});
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
 ```
 
-- [ ] **Step 7: Vitest config**
+Add the generated client output directory to `web/.gitignore` (it's
+generated code, not source):
+```
+/generated/prisma
+```
+
+- [ ] **Step 8: Vitest config**
 
 `web/vitest.config.ts`:
 ```typescript
@@ -250,7 +294,7 @@ Add a `test` script to `web/package.json`'s `scripts` block:
 "test": "vitest run"
 ```
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add -A
