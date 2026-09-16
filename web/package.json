@@ -13,6 +13,7 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "better-auth": "^1.7.5",
+    "dompurify": "^3.4.15",
     "dotenv": "^17.4.2",
     "next": "16.3.5",
     "pg": "^8.23.0",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/dompurify": "^3.0.5",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
