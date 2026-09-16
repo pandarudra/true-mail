@@ -65,7 +65,11 @@ npm install -D prisma vitest
 
 `web/.env.example`:
 ```bash
-DATABASE_URL="postgresql://user:password@host:5432/truemail?sslmode=require"
+# Pooled connection (pgbouncer, transaction mode) — used at runtime.
+DATABASE_URL="postgresql://user:password@host:6543/postgres?sslmode=require"
+# Direct connection — required for `prisma migrate`. Supabase's pooler
+# (above) doesn't support the DDL/prepared statements migrations need.
+DIRECT_URL="postgresql://user:password@host:5432/postgres?sslmode=require"
 # 32 random bytes, base64-encoded. Generate with:
 #   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ENCRYPTION_KEY=""
@@ -95,8 +99,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
