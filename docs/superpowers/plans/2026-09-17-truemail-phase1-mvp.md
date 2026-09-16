@@ -1927,6 +1927,12 @@ type Email = {
   createdAt: string;
 };
 
+function snippet(text: string | null): string {
+  if (!text) return "";
+  const oneLine = text.replace(/\s+/g, " ").trim();
+  return oneLine.length > 80 ? `${oneLine.slice(0, 80)}...` : oneLine;
+}
+
 export function MessageList({
   emails,
   activeEmailId,
@@ -1958,10 +1964,18 @@ export function MessageList({
             }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <span
-                className={`truncate text-sm ${email.read ? "text-zinc-600 dark:text-zinc-400" : "font-semibold text-foreground"}`}
-              >
-                {email.from}
+              <span className="flex items-center gap-2 truncate">
+                {!email.read && (
+                  <span
+                    aria-label="Unread"
+                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-600"
+                  />
+                )}
+                <span
+                  className={`truncate text-sm ${email.read ? "text-zinc-600 dark:text-zinc-400" : "font-semibold text-foreground"}`}
+                >
+                  {email.from}
+                </span>
               </span>
               <span className="shrink-0 text-xs text-zinc-500">
                 {new Date(email.createdAt).toLocaleDateString()}
@@ -1969,6 +1983,9 @@ export function MessageList({
             </div>
             <span className="truncate text-sm text-zinc-600 dark:text-zinc-400">
               {email.subject}
+            </span>
+            <span className="truncate text-xs text-zinc-500">
+              {snippet(email.text)}
             </span>
           </button>
         </li>
