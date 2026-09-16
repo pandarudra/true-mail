@@ -1,0 +1,81 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  resendConnection ResendConnection?
+  domains          Domain[]
+  mailboxes        Mailbox[]
+}
+
+model ResendConnection {
+  id                     String   @id @default(uuid())
+  userId                 String   @unique
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  encryptedApiKey        String
+  webhookId              String
+  encryptedWebhookSecret String
+  createdAt              DateTime @default(now())
+  domains                Domain[]
+}
+
+model Domain {
+  id             String           @id @default(uuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId   String
+  connection     ResendConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  resendDomainId String
+  name           String           @unique
+  status         String           @default("pending")
+  dnsRecords     Json
+  createdAt      DateTime         @default(now())
+  mailboxes      Mailbox[]
+}
+
+model Mailbox {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domainId    String
+  domain      Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  localPart   String
+  address     String   @unique
+  displayName String?
+  createdAt   DateTime @default(now())
+  emails      Email[]
+}
+
+model Email {
+  id            String    @id @default(uuid())
+  mailboxId     String
+  mailbox       Mailbox   @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  resendEmailId String?
+  direction     String
+  from          String
+  to            String[]
+  cc            String[]
+  subject       String
+  text          String?
+  html          String?
+  status        String
+  read          Boolean   @default(false)
+  starred       Boolean   @default(false)
+  sentAt        DateTime?
+  receivedAt    DateTime?
+  createdAt     DateTime  @default(now())
+}
