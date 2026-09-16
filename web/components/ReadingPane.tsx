@@ -24,7 +24,7 @@ export function ReadingPane({
 }) {
   const safeHtml = useMemo(
     () => (email?.html ? DOMPurify.sanitize(email.html) : null),
-    [email?.html]
+    [email]
   );
 
   if (!email) {
