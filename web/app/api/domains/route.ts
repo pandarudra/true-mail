@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       resendDomainId: data.id,
       name,
       status: "pending",
-      dnsRecords: data.records,
+      dnsRecords: JSON.parse(JSON.stringify(data.records)),
     },
   });
 
