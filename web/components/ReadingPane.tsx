@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import DOMPurify from "dompurify";
+import { Star, TrashSimple } from "@phosphor-icons/react";
 
 type Email = {
   id: string;
@@ -49,17 +50,23 @@ export function ReadingPane({
         <div className="flex shrink-0 gap-2">
           <button
             type="button"
+            aria-label={email.starred ? "Unstar" : "Star"}
             onClick={() => onToggleStar(email.id, !email.starred)}
-            className="rounded-md border border-black/10 px-3 py-1 text-sm transition-colors hover:bg-black/[.03] dark:border-white/15 dark:hover:bg-white/[.05]"
+            className={`rounded-lg border p-2 transition-colors ${
+              email.starred
+                ? "border-amber-200 bg-amber-50 text-amber-500 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/20"
+                : "border-black/10 text-zinc-500 hover:bg-black/[.03] dark:border-white/10 dark:hover:bg-white/[.05]"
+            }`}
           >
-            {email.starred ? "Unstar" : "Star"}
+            <Star size={16} weight={email.starred ? "fill" : "regular"} />
           </button>
           <button
             type="button"
+            aria-label="Delete"
             onClick={() => onDelete(email.id)}
-            className="rounded-md border border-black/10 px-3 py-1 text-sm text-red-600 transition-colors hover:bg-red-50 dark:border-white/15 dark:hover:bg-red-950/30"
+            className="rounded-lg border border-black/10 p-2 text-zinc-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-white/10 dark:hover:bg-red-950/30"
           >
-            Delete
+            <TrashSimple size={16} />
           </button>
         </div>
       </div>
