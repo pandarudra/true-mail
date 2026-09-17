@@ -28,6 +28,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "apiKey is required" }, { status: 400 });
   }
 
+  const webhookBaseUrl = process.env.RESEND_WEBHOOK_BASE_URL ?? process.env.APP_URL;
+  if (!webhookBaseUrl?.startsWith("https://")) {
+    return NextResponse.json(
+      {
+        error:
+          "RESEND_WEBHOOK_BASE_URL (or APP_URL) must be a public HTTPS URL so Resend can deliver webhooks (e.g. an ngrok tunnel in development, or your deployed domain in production). It is currently: " +
+          webhookBaseUrl,
+      },
+      { status: 500 }
+    );
+  }
+
   const resend = new Resend(apiKey);
   const { error: validateError } = await resend.domains.list();
   if (validateError) {
@@ -46,7 +58,7 @@ export async function POST(req: Request) {
     },
   });
 
-  const endpoint = `${process.env.APP_URL}/api/webhooks/resend/${connection.id}`;
+  const endpoint = `${webhookBaseUrl}/api/webhooks/resend/${connection.id}`;
   const { data: webhook, error: webhookError } = await resend.webhooks.create({
     endpoint,
     events: ["email.received", "email.sent", "email.delivered", "email.bounced"],
@@ -55,7 +67,10 @@ export async function POST(req: Request) {
   if (webhookError || !webhook) {
     await prisma.resendConnection.delete({ where: { id: connection.id } });
     return NextResponse.json(
-      { error: "Failed to register webhook with Resend" },
+      {
+        error:
+          webhookError?.message ?? "Failed to register webhook with Resend",
+      },
       { status: 502 }
     );
   }
