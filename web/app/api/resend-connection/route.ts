@@ -1,7 +1,8 @@
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { prisma } from "@/lib/db";
-import { encrypt } from "@/lib/crypto";
+import { encrypt, decrypt } from "@/lib/crypto";
 import { getUserId } from "@/lib/session";
 
 export async function GET(req: Request) {
@@ -49,23 +50,21 @@ export async function POST(req: Request) {
     );
   }
 
-  const connection = await prisma.resendConnection.create({
-    data: {
-      userId,
-      encryptedApiKey: encrypt(apiKey),
-      webhookId: "",
-      encryptedWebhookSecret: "",
-    },
-  });
+  // Reconnecting (e.g. rotating the key) must not disturb existing Domains/
+  // Mailboxes — they cascade off ResendConnection.id, so we upsert in place
+  // rather than delete-then-create. The new webhook is verified working
+  // before any database write, so a failed reconnect never corrupts a
+  // previously-working connection.
+  const existing = await prisma.resendConnection.findUnique({ where: { userId } });
+  const connectionId = existing?.id ?? randomUUID();
 
-  const endpoint = `${webhookBaseUrl}/api/webhooks/resend/${connection.id}`;
+  const endpoint = `${webhookBaseUrl}/api/webhooks/resend/${connectionId}`;
   const { data: webhook, error: webhookError } = await resend.webhooks.create({
     endpoint,
     events: ["email.received", "email.sent", "email.delivered", "email.bounced"],
   });
 
   if (webhookError || !webhook) {
-    await prisma.resendConnection.delete({ where: { id: connection.id } });
     return NextResponse.json(
       {
         error:
@@ -75,9 +74,22 @@ export async function POST(req: Request) {
     );
   }
 
-  await prisma.resendConnection.update({
-    where: { id: connection.id },
-    data: {
+  if (existing?.webhookId) {
+    const oldResend = new Resend(decrypt(existing.encryptedApiKey));
+    await oldResend.webhooks.remove(existing.webhookId).catch(() => {});
+  }
+
+  const connection = await prisma.resendConnection.upsert({
+    where: { userId },
+    create: {
+      id: connectionId,
+      userId,
+      encryptedApiKey: encrypt(apiKey),
+      webhookId: webhook.id,
+      encryptedWebhookSecret: encrypt(webhook.signing_secret),
+    },
+    update: {
+      encryptedApiKey: encrypt(apiKey),
       webhookId: webhook.id,
       encryptedWebhookSecret: encrypt(webhook.signing_secret),
     },

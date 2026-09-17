@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { EnvelopeSimple } from "@phosphor-icons/react";
 import { BrandMark } from "@/components/BrandMark";
 import { OnboardingSteps } from "@/components/OnboardingSteps";
+import { readError } from "@/lib/api-error";
 
 export default function ConnectResendPage() {
   const router = useRouter();
@@ -23,8 +24,7 @@ export default function ConnectResendPage() {
     });
     setLoading(false);
     if (!res.ok) {
-      const { error: message } = await res.json();
-      setError(message ?? "Something went wrong");
+      setError(await readError(res));
       return;
     }
     router.push("/onboarding/domain");

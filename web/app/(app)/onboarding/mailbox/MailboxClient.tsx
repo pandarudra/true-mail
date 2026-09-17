@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { At } from "@phosphor-icons/react";
 import { BrandMark } from "@/components/BrandMark";
 import { OnboardingSteps } from "@/components/OnboardingSteps";
+import { readError } from "@/lib/api-error";
 
 type Domain = { id: string; name: string };
 
@@ -26,8 +27,7 @@ export function MailboxClient({ domains }: { domains: Domain[] }) {
     });
     setLoading(false);
     if (!res.ok) {
-      const { error: message } = await res.json();
-      setError(message ?? "Something went wrong");
+      setError(await readError(res));
       return;
     }
     router.push("/inbox");

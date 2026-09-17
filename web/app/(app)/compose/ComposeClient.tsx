@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, PaperPlaneTilt } from "@phosphor-icons/react";
+import { readError } from "@/lib/api-error";
 
 type Mailbox = { id: string; address: string };
 
@@ -31,8 +32,7 @@ export function ComposeClient({ mailboxes }: { mailboxes: Mailbox[] }) {
     });
     setSending(false);
     if (!res.ok) {
-      const { error: message } = await res.json();
-      setError(message ?? "Failed to send");
+      setError(await readError(res));
       return;
     }
     router.push("/inbox");

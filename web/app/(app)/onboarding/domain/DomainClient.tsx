@@ -6,6 +6,7 @@ import { CheckCircle, Globe } from "@phosphor-icons/react";
 import { DnsRecordCard } from "@/components/DnsRecordCard";
 import { BrandMark } from "@/components/BrandMark";
 import { OnboardingSteps } from "@/components/OnboardingSteps";
+import { readError } from "@/lib/api-error";
 
 type Domain = {
   id: string;
@@ -37,8 +38,7 @@ export function DomainClient() {
     });
     setLoading(false);
     if (!res.ok) {
-      const { error: message } = await res.json();
-      setError(message ?? "Something went wrong");
+      setError(await readError(res));
       return;
     }
     const { domain: created } = await res.json();
@@ -53,8 +53,7 @@ export function DomainClient() {
     });
     setLoading(false);
     if (!res.ok) {
-      const { error: message } = await res.json();
-      setError(message ?? "Verification failed");
+      setError(await readError(res));
       return;
     }
     const { domain: updated } = await res.json();
