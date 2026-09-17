@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CheckCircle, Globe } from "@phosphor-icons/react";
 import { DnsRecordCard } from "@/components/DnsRecordCard";
+import { BrandMark } from "@/components/BrandMark";
+import { OnboardingSteps } from "@/components/OnboardingSteps";
 
 type Domain = {
   id: string;
@@ -64,29 +67,40 @@ export default function ConnectDomainPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-16">
       <div className="w-full max-w-lg">
-        <h1 className="mb-2 text-2xl font-semibold text-foreground">
+        <BrandMark className="mb-10" />
+        <OnboardingSteps current={2} />
+        <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
+          <Globe size={22} weight="bold" />
+        </div>
+        <h1 className="mb-2 text-xl font-semibold text-foreground">
           Connect your domain
         </h1>
         {!domain && (
           <>
-            <p className="mb-8 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mb-8 text-sm text-zinc-500">
               Use a subdomain (e.g. <code>mail.yourdomain.com</code>) to avoid
               conflicts with any email you already have on the root domain.
             </p>
             <form onSubmit={handleCreate} className="flex flex-col gap-4">
-              <input
-                type="text"
-                placeholder="mail.yourdomain.com"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="rounded-md border border-black/10 px-3 py-2 dark:border-white/15"
-              />
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="domain" className="text-sm font-medium text-foreground">
+                  Domain
+                </label>
+                <input
+                  id="domain"
+                  type="text"
+                  placeholder="mail.yourdomain.com"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="rounded-lg border border-black/10 px-3 py-2 text-sm outline-none transition-colors focus:border-indigo-400 dark:border-white/10"
+                />
+              </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-md bg-indigo-600 px-4 py-2 font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+                className="self-start rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50"
               >
                 {loading ? "Creating..." : "Continue"}
               </button>
@@ -95,7 +109,7 @@ export default function ConnectDomainPage() {
         )}
         {domain && (
           <>
-            <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mb-6 text-sm text-zinc-500">
               Add these records at your DNS provider, then verify.
             </p>
             <div className="mb-6 flex flex-col gap-3">
@@ -108,12 +122,13 @@ export default function ConnectDomainPage() {
               type="button"
               onClick={handleVerify}
               disabled={loading}
-              className="rounded-md bg-indigo-600 px-4 py-2 font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50"
             >
+              {domain.status === "verified" && <CheckCircle size={16} weight="fill" />}
               {loading
                 ? "Checking..."
                 : domain.status === "verified"
-                  ? "Verified — continue"
+                  ? "Verified. Continue"
                   : "Verify domain"}
             </button>
           </>

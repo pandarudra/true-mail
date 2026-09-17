@@ -1,6 +1,7 @@
 "use client";
 
 import { EnvelopeSimple, PencilSimpleLine } from "@phosphor-icons/react";
+import { BrandMark } from "@/components/BrandMark";
 
 type Mailbox = { id: string; address: string };
 type User = { name: string; email: string };
@@ -24,14 +25,7 @@ export function Sidebar({
 }) {
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-black/10 bg-white p-4 dark:border-white/10 dark:bg-zinc-950">
-      <div className="mb-6 flex items-center gap-2 px-1">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-sm font-semibold text-white">
-          T
-        </div>
-        <span className="text-lg font-semibold tracking-tight text-foreground">
-          TrueMail
-        </span>
-      </div>
+      <BrandMark className="mb-6 px-1" />
 
       <div className="mb-6 flex items-center gap-3 rounded-lg bg-zinc-50 p-3 dark:bg-white/[.04]">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">

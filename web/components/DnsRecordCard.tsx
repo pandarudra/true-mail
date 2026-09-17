@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check, Copy } from "@phosphor-icons/react";
 
 type DnsRecord = {
   record: string;
@@ -20,7 +21,7 @@ export function DnsRecordCard({ record }: { record: DnsRecord }) {
   }
 
   return (
-    <div className="rounded-md border border-black/10 p-4 dark:border-white/15">
+    <div className="rounded-lg border border-black/10 p-4 dark:border-white/10">
       <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
         {record.record} · {record.type}
       </p>
@@ -32,8 +33,9 @@ export function DnsRecordCard({ record }: { record: DnsRecord }) {
         <button
           type="button"
           onClick={handleCopy}
-          className="shrink-0 rounded-md border border-black/10 px-2 py-1 text-xs font-medium transition-colors hover:bg-black/[.03] dark:border-white/15 dark:hover:bg-white/[.05]"
+          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-black/10 px-2 py-1 text-xs font-medium transition-colors hover:bg-black/[.03] dark:border-white/10 dark:hover:bg-white/[.05]"
         >
+          {copied ? <Check size={13} weight="bold" /> : <Copy size={13} />}
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
