@@ -43,9 +43,18 @@ export async function POST(req: Request) {
   }
 
   const address = `${localPart}@${domain.name}`;
-  const mailbox = await prisma.mailbox.create({
-    data: { userId, domainId, localPart, address, displayName },
-  });
-
-  return NextResponse.json({ mailbox });
+  try {
+    const mailbox = await prisma.mailbox.create({
+      data: { userId, domainId, localPart, address, displayName },
+    });
+    return NextResponse.json({ mailbox });
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
+      return NextResponse.json(
+        { error: `${address} is already taken` },
+        { status: 409 }
+      );
+    }
+    throw error;
+  }
 }

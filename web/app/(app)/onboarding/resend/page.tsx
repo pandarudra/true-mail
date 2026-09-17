@@ -1,34 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { use } from "react";
 import { EnvelopeSimple } from "@phosphor-icons/react";
 import { BrandMark } from "@/components/BrandMark";
 import { OnboardingSteps } from "@/components/OnboardingSteps";
-import { readError } from "@/lib/api-error";
 
-export default function ConnectResendPage() {
-  const router = useRouter();
-  const [apiKey, setApiKey] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+const ERROR_MESSAGES: Record<string, string> = {
+  access_denied: "You declined the request, so TrueMail wasn't connected.",
+  oauth_not_configured: "Resend OAuth isn't configured on this server yet.",
+  invalid_callback: "The connection attempt was invalid. Please try again.",
+  state_mismatch: "The connection attempt expired. Please try again.",
+  webhook_base_url_not_https:
+    "RESEND_WEBHOOK_BASE_URL (or APP_URL) must be a public HTTPS URL so Resend can deliver webhooks.",
+  token_exchange_failed: "Resend rejected the connection. Please try again.",
+  webhook_registration_failed: "Connected, but failed to register the webhook. Please try again.",
+};
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const res = await fetch("/api/resend-connection", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ apiKey }),
-    });
-    setLoading(false);
-    if (!res.ok) {
-      setError(await readError(res));
-      return;
-    }
-    router.push("/onboarding/domain");
-  }
+export default function ConnectResendPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = use(searchParams);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-16">
@@ -43,41 +36,19 @@ export default function ConnectResendPage() {
         </h1>
         <p className="mb-8 text-sm text-zinc-500">
           TrueMail sends and receives email through your own Resend account.
-          Paste an API key from{" "}
-          <a
-            href="https://resend.com/api-keys"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-indigo-600"
-          >
-            resend.com/api-keys
-          </a>
-          .
+          You&apos;ll be asked to approve access on Resend&apos;s site — no API key to copy.
         </p>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="apiKey" className="text-sm font-medium text-foreground">
-              Resend API key
-            </label>
-            <input
-              id="apiKey"
-              type="password"
-              placeholder="re_xxxxxxxxxxxxxxxxxxxxx"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              required
-              className="rounded-lg border border-black/10 px-3 py-2 font-mono text-sm outline-none transition-colors focus:border-indigo-400 dark:border-white/10"
-            />
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="self-start rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50"
-          >
-            {loading ? "Connecting..." : "Connect"}
-          </button>
-        </form>
+        {error && (
+          <p className="mb-4 text-sm text-red-600">
+            {ERROR_MESSAGES[error] ?? "Something went wrong connecting to Resend. Please try again."}
+          </p>
+        )}
+        <a
+          href="/api/oauth/resend/start"
+          className="inline-block self-start rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 active:scale-[0.98]"
+        >
+          Connect with Resend
+        </a>
       </div>
     </main>
   );

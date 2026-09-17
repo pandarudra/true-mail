@@ -28,14 +28,17 @@ model User {
 }
 
 model ResendConnection {
-  id                     String   @id @default(uuid())
-  userId                 String   @unique
-  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  encryptedApiKey        String
-  webhookId              String
-  encryptedWebhookSecret String
-  createdAt              DateTime @default(now())
-  domains                Domain[]
+  id                       String   @id @default(uuid())
+  userId                   String   @unique
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  encryptedAccessToken     String
+  encryptedRefreshToken    String
+  accessTokenExpiresAt     DateTime
+  scope                    String
+  webhookId                String
+  encryptedWebhookSecret   String
+  createdAt                DateTime @default(now())
+  domains                  Domain[]
 }
 
 model Domain {

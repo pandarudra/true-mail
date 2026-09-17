@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/session";
 import { getConnectionForUser } from "@/lib/resend-client";
+import { verifyDomain } from "@/lib/resend";
+import { syncDomainStatus } from "@/lib/sync-domain-status";
 
 export async function POST(
   req: Request,
@@ -24,19 +26,14 @@ export async function POST(
   }
   const { resend } = connectionResult;
 
-  await resend.domains.verify(domain.resendDomainId);
-  const { data, error } = await resend.domains.get(domain.resendDomainId);
-  if (error || !data) {
+  await verifyDomain(resend, domain.resendDomainId);
+  const updated = await syncDomainStatus(resend, domain);
+  if (!updated) {
     return NextResponse.json(
-      { error: error?.message ?? "Failed to refresh domain status" },
+      { error: "Failed to refresh domain status" },
       { status: 502 }
     );
   }
-
-  const updated = await prisma.domain.update({
-    where: { id: domain.id },
-    data: { status: data.status },
-  });
 
   return NextResponse.json({ domain: updated });
 }

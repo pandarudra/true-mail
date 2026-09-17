@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/session";
 import { getConnectionForUser } from "@/lib/resend-client";
+import { sendEmail } from "@/lib/resend";
 
 export async function GET(req: Request) {
   const userId = await getUserId(req.headers);
@@ -77,7 +78,8 @@ export async function POST(req: Request) {
   const { resend } = connectionResult;
 
   const sendId = randomUUID();
-  const { data, error } = await resend.emails.send(
+  const sendResult = await sendEmail(
+    resend,
     {
       from: mailbox.address,
       to,
@@ -89,9 +91,10 @@ export async function POST(req: Request) {
     { idempotencyKey: `send/${sendId}` }
   );
 
-  if (error || !data) {
+  const data = sendResult?.data;
+  if (!data) {
     return NextResponse.json(
-      { error: error?.message ?? "Failed to send email" },
+      { error: "Failed to send email" },
       { status: 502 }
     );
   }

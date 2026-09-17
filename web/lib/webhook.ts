@@ -1,4 +1,5 @@
 import type { Resend } from "resend";
+import { verifyWebhookPayload } from "@/lib/resend";
 
 type SvixHeaders = {
   "svix-id": string | null;
@@ -12,7 +13,7 @@ export function verifyWebhookEvent(
   headers: SvixHeaders,
   secret: string
 ) {
-  return resend.webhooks.verify({
+  return verifyWebhookPayload(resend, {
     payload,
     headers: {
       id: headers["svix-id"] ?? "",

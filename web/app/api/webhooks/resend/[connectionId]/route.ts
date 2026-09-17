@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getConnectionById } from "@/lib/resend-client";
 import { verifyWebhookEvent } from "@/lib/webhook";
+import { getReceivedEmail } from "@/lib/resend";
 
 export async function POST(
   req: Request,
@@ -32,9 +33,8 @@ export async function POST(
   }
 
   if (event.type === "email.received") {
-    const { data: email } = await resend.emails.receiving.get(
-      event.data.email_id
-    );
+    const emailResult = await getReceivedEmail(resend, event.data.email_id);
+    const email = emailResult?.data;
     if (email) {
       const recipient = email.to.find(Boolean);
       const mailbox = recipient

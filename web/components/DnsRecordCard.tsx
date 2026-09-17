@@ -9,6 +9,15 @@ type DnsRecord = {
   type: string;
   value: string;
   priority?: number;
+  status?: string;
+};
+
+const STATUS_STYLES: Record<string, string> = {
+  verified: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
+  failed: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
+  temporary_failure: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
+  pending: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
+  not_started: "bg-zinc-100 text-zinc-500 dark:bg-white/5 dark:text-zinc-400",
 };
 
 export function DnsRecordCard({ record }: { record: DnsRecord }) {
@@ -22,9 +31,20 @@ export function DnsRecordCard({ record }: { record: DnsRecord }) {
 
   return (
     <div className="rounded-lg border border-black/10 p-4 dark:border-white/10">
-      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-        {record.record} · {record.type}
-      </p>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          {record.record} · {record.type}
+        </p>
+        {record.status && (
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${
+              STATUS_STYLES[record.status] ?? STATUS_STYLES.not_started
+            }`}
+          >
+            {record.status.replace(/_/g, " ")}
+          </span>
+        )}
+      </div>
       <p className="mb-1 break-all font-mono text-xs text-zinc-600 dark:text-zinc-400">
         {record.name}
       </p>
