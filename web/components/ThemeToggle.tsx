@@ -1,24 +1,32 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { drawablyToggle } from "drawably";
+import { useSyncExternalStore } from "react";
+import { Moon, Sun } from "@phosphor-icons/react";
+import { IconButton } from "@/components/ui/IconButton";
+
+// The dark class is set by an inline script in layout.tsx before paint (and
+// by toggle() below) — useSyncExternalStore reads it back without a
+// server/client hydration mismatch, since the server snapshot is allowed to
+// differ and React reconciles after hydration on its own.
+function subscribe(callback: () => void) {
+  const observer = new MutationObserver(callback);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+  return () => observer.disconnect();
+}
+
+function getSnapshot() {
+  return document.documentElement.classList.contains("dark");
+}
+
+function getServerSnapshot() {
+  return false;
+}
 
 export function ThemeToggle() {
-  const hostRef = useRef<HTMLSpanElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const isDark = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  useEffect(() => {
-    if (!hostRef.current || !inputRef.current) return;
-    // Renders unchecked on both server and first client render (no hydration mismatch), then this
-    // corrects the actual DOM checked state post-mount — a safe imperative mutation, not a React-diffed
-    // attribute — before drawably's own attach reads it to draw the knob in the right position.
-    inputRef.current.checked = document.documentElement.classList.contains("dark");
-    const sketch = drawablyToggle(hostRef.current, { roughness: 0.3, boil: 0.1 });
-    return () => sketch.destroy();
-  }, []);
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const next = e.target.checked;
+  function toggle() {
+    const next = !isDark;
     document.documentElement.classList.toggle("dark", next);
     try {
       localStorage.setItem("theme", next ? "dark" : "light");
@@ -28,8 +36,8 @@ export function ThemeToggle() {
   }
 
   return (
-    <span ref={hostRef}>
-      <input ref={inputRef} type="checkbox" role="switch" aria-label="Toggle theme" onChange={handleChange} />
-    </span>
+    <IconButton label={isDark ? "Switch to light theme" : "Switch to dark theme"} onClick={toggle}>
+      {isDark ? <Sun size={16} /> : <Moon size={16} />}
+    </IconButton>
   );
 }

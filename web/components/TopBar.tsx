@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MagnifyingGlass } from "@phosphor-icons/react";
+import { Gear, MagnifyingGlass, SignOut } from "@phosphor-icons/react";
 import { DrawablyCard, DrawablyCircle, DrawablyDivider } from "drawably/react";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Input } from "@/components/ui/Input";
 import { authClient } from "@/lib/auth-client";
 
-type User = { name: string; email: string };
+type User = { name: string; email: string; image?: string | null };
 
 function initial(user: User): string {
   return (user.name || user.email).charAt(0).toUpperCase();
@@ -57,9 +57,18 @@ export function TopBar({
             aria-label="Account menu"
             className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold text-brand-800 transition-colors hover:bg-surface-subtle dark:text-brand-300"
           >
-            <DrawablyCircle roughness={0.3} boil={0.1}>
-              {initial(user)}
-            </DrawablyCircle>
+            {user.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={user.image}
+                alt=""
+                className="h-9 w-9 rounded-full object-cover"
+              />
+            ) : (
+              <DrawablyCircle roughness={0.3} boil={0.1}>
+                {initial(user)}
+              </DrawablyCircle>
+            )}
           </button>
           {menuOpen && (
             <>
@@ -70,18 +79,36 @@ export function TopBar({
                 onClick={() => setMenuOpen(false)}
               />
               <div className="absolute right-0 z-20 mt-2 w-56">
-                <DrawablyCard roughness={0.3} boil={0.1} className="bg-surface p-2">
+                <DrawablyCard
+                  roughness={0.3}
+                  boil={0.1}
+                  className="bg-surface p-2"
+                >
                   <div className="px-3 py-2">
                     <p className="truncate text-sm font-medium text-foreground">
                       {user.name || user.email}
                     </p>
-                    <p className="truncate text-xs text-text-secondary">{user.email}</p>
+                    <p className="truncate text-xs text-text-secondary">
+                      {user.email}
+                    </p>
                   </div>
                   <button
                     type="button"
-                    onClick={handleSignOut}
-                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface-subtle"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      router.push("/settings");
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface-subtle"
                   >
+                    <Gear size={16} />
+                    Settings
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface-subtle"
+                  >
+                    <SignOut size={16} />
                     Sign out
                   </button>
                 </DrawablyCard>

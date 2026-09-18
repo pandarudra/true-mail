@@ -15,7 +15,10 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/Button";
 
 function timeAgo(date: Date, now: Date): string {
-  const seconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+  const seconds = Math.max(
+    0,
+    Math.floor((now.getTime() - date.getTime()) / 1000),
+  );
   if (seconds < 10) return "just now";
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);
@@ -68,36 +71,63 @@ export function InboxToolbar({
 
   return (
     <div>
-    <div className="flex items-center justify-between px-6 py-3">
-      <div className="flex items-center gap-3">
-        <h1 className="text-base font-semibold text-foreground">{label}</h1>
-        <DrawablyBadge roughness={0.3} boil={0.1} className="tabular-nums">
-          {totalCount}
-        </DrawablyBadge>
+      <div className="flex items-center justify-between px-6 py-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-base font-semibold text-foreground">{label}</h1>
+          <DrawablyBadge roughness={0.3} boil={0.1} className="tabular-nums">
+            {totalCount}
+          </DrawablyBadge>
 
-        {folder === "trash" ? (
-          <>
-            {hasSelection && (
-              <Button variant="secondary" onClick={onRestoreSelected}>
-                <ArrowUUpLeft size={16} />
-                Restore ({selectedCount})
-              </Button>
-            )}
-            <Button
-              variant="destructive"
-              onClick={hasSelection ? onDeleteForeverSelected : onEmptyTrash}
-              disabled={!hasSelection && totalCount === 0}
-            >
-              <TrashSimple size={16} />
-              {hasSelection ? `Delete forever (${selectedCount})` : "Empty trash"}
-            </Button>
-          </>
-        ) : folder === "spam" ? (
-          hasSelection ? (
+          {folder === "trash" ? (
             <>
-              <Button variant="secondary" onClick={onNotSpamSelected}>
-                <ArrowUUpLeft size={16} />
-                Not spam ({selectedCount})
+              {hasSelection && (
+                <Button variant="secondary" onClick={onRestoreSelected}>
+                  <ArrowUUpLeft size={16} />
+                  Restore ({selectedCount})
+                </Button>
+              )}
+              <Button
+                variant="destructive"
+                onClick={hasSelection ? onDeleteForeverSelected : onEmptyTrash}
+                disabled={!hasSelection && totalCount === 0}
+              >
+                <TrashSimple size={16} />
+                {hasSelection
+                  ? `Delete forever (${selectedCount})`
+                  : "Empty trash"}
+              </Button>
+            </>
+          ) : folder === "spam" ? (
+            hasSelection ? (
+              <>
+                <Button variant="secondary" onClick={onNotSpamSelected}>
+                  <ArrowUUpLeft size={16} />
+                  Not spam ({selectedCount})
+                </Button>
+                <Button variant="destructive" onClick={onTrashSelected}>
+                  <TrashSimple size={16} />
+                  Delete ({selectedCount})
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="secondary"
+                onClick={onMarkAllRead}
+                disabled={unreadCount === 0}
+              >
+                <CheckSquare size={16} />
+                Mark all read
+              </Button>
+            )
+          ) : hasSelection ? (
+            <>
+              <Button variant="secondary" onClick={onArchiveSelected}>
+                <Archive size={16} />
+                Archive ({selectedCount})
+              </Button>
+              <Button variant="secondary" onClick={onSpamSelected}>
+                <ShieldWarning size={16} />
+                Spam
               </Button>
               <Button variant="destructive" onClick={onTrashSelected}>
                 <TrashSimple size={16} />
@@ -105,44 +135,32 @@ export function InboxToolbar({
               </Button>
             </>
           ) : (
-            <Button variant="secondary" onClick={onMarkAllRead} disabled={unreadCount === 0}>
+            <Button
+              variant="secondary"
+              onClick={onMarkAllRead}
+              disabled={unreadCount === 0}
+            >
               <CheckSquare size={16} />
               Mark all read
             </Button>
-          )
-        ) : hasSelection ? (
-          <>
-            <Button variant="secondary" onClick={onArchiveSelected}>
-              <Archive size={16} />
-              Archive ({selectedCount})
-            </Button>
-            <Button variant="secondary" onClick={onSpamSelected}>
-              <ShieldWarning size={16} />
-              Spam
-            </Button>
-            <Button variant="destructive" onClick={onTrashSelected}>
-              <TrashSimple size={16} />
-              Delete ({selectedCount})
-            </Button>
-          </>
-        ) : (
-          <Button variant="secondary" onClick={onMarkAllRead} disabled={unreadCount === 0}>
-            <CheckSquare size={16} />
-            Mark all read
-          </Button>
-        )}
-      </div>
+          )}
+        </div>
 
-      <div className="flex items-center gap-3">
-        {updatedAt && (
-          <span className="font-mono text-xs text-text-muted">Updated {timeAgo(updatedAt, now)}</span>
-        )}
-        <IconButton label="Refresh" onClick={onRefresh}>
-          <ArrowClockwise size={16} className={refreshing ? "animate-spin" : ""} />
-        </IconButton>
+        <div className="flex items-center gap-3">
+          {updatedAt && (
+            <span className="font-mono text-xs text-text-muted">
+              Updated {timeAgo(updatedAt, now)}
+            </span>
+          )}
+          <IconButton label="Refresh" onClick={onRefresh}>
+            <ArrowClockwise
+              size={16}
+              className={refreshing ? "animate-spin" : ""}
+            />
+          </IconButton>
+        </div>
       </div>
-    </div>
-    <DrawablyDivider roughness={0.3} boil={0.1} />
+      <DrawablyDivider roughness={0.3} boil={0.1} />
     </div>
   );
 }

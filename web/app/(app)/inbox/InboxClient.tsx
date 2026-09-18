@@ -432,6 +432,7 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
         user={{
           name: session?.user.name ?? "",
           email: session?.user.email ?? "",
+          image: session?.user.image,
         }}
         query={query}
         onQueryChange={setQuery}
