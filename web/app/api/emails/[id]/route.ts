@@ -39,9 +39,20 @@ export async function PATCH(
   }
 
   const body = await req.json();
-  const data: { read?: boolean; starred?: boolean } = {};
+  const data: {
+    read?: boolean;
+    starred?: boolean;
+    important?: boolean;
+    archived?: boolean;
+    spam?: boolean;
+    trashedAt?: Date | null;
+  } = {};
   if (typeof body?.read === "boolean") data.read = body.read;
   if (typeof body?.starred === "boolean") data.starred = body.starred;
+  if (typeof body?.important === "boolean") data.important = body.important;
+  if (typeof body?.archived === "boolean") data.archived = body.archived;
+  if (typeof body?.spam === "boolean") data.spam = body.spam;
+  if (typeof body?.trashed === "boolean") data.trashedAt = body.trashed ? new Date() : null;
 
   const email = await prisma.email.update({ where: { id }, data });
   return NextResponse.json({ email });

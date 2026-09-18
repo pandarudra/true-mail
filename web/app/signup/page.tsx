@@ -34,8 +34,8 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm">
+    <main className="flex min-h-screen items-center justify-center bg-brand-50/50 px-4 dark:bg-zinc-950">
+      <div className="w-full max-w-sm rounded-2xl border border-black/4 bg-white p-8 shadow-sm dark:border-white/5 dark:bg-zinc-900">
         <BrandMark className="mb-10 justify-center" />
         <h1 className="mb-1 text-xl font-semibold text-foreground">
           Create your account
@@ -55,7 +55,7 @@ export default function SignupPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="rounded-lg border border-black/10 px-3 py-2 text-sm outline-none transition-colors focus:border-indigo-400 dark:border-white/10"
+              className="rounded-xl border border-black/10 px-3 py-2 text-sm outline-none transition-colors focus:border-brand-400 dark:border-white/10"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -69,7 +69,7 @@ export default function SignupPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="rounded-lg border border-black/10 px-3 py-2 text-sm outline-none transition-colors focus:border-indigo-400 dark:border-white/10"
+              className="rounded-xl border border-black/10 px-3 py-2 text-sm outline-none transition-colors focus:border-brand-400 dark:border-white/10"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -85,7 +85,7 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
-                className="w-full rounded-lg border border-black/10 px-3 py-2 pr-10 text-sm outline-none transition-colors focus:border-indigo-400 dark:border-white/10"
+                className="w-full rounded-xl border border-black/10 px-3 py-2 pr-10 text-sm outline-none transition-colors focus:border-brand-400 dark:border-white/10"
               />
               <button
                 type="button"
@@ -102,7 +102,7 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50"
+            className="rounded-full bg-brand-800 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand-800/20 transition-colors hover:bg-brand-700 active:scale-[0.98] disabled:opacity-50"
           >
             {loading ? "Creating account..." : "Create account"}
           </button>
@@ -115,14 +115,14 @@ export default function SignupPage() {
         <button
           type="button"
           onClick={() => authClient.signIn.social({ provider: "google" })}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-black/10 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-black/[.03] dark:border-white/10 dark:hover:bg-white/[.05]"
+          className="flex w-full items-center justify-center gap-2 rounded-full border border-black/10 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-black/3 dark:border-white/10 dark:hover:bg-white/5"
         >
           <GoogleIcon />
           Continue with Google
         </button>
         <p className="mt-6 text-center text-sm text-zinc-500">
           Already have an account?{" "}
-          <a href="/login" className="font-medium text-indigo-600">
+          <a href="/login" className="font-medium text-brand-800">
             Log in
           </a>
         </p>

@@ -24,11 +24,11 @@ export default function ConnectResendPage({
   const { error } = use(searchParams);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-16">
-      <div className="w-full max-w-md">
+    <main className="flex min-h-screen items-center justify-center bg-brand-50/50 px-4 py-16 dark:bg-zinc-950">
+      <div className="w-full max-w-md rounded-2xl border border-black/4 bg-white p-8 shadow-sm dark:border-white/5 dark:bg-zinc-900">
         <BrandMark className="mb-10" />
         <OnboardingSteps current={1} />
-        <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
+        <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-800 dark:bg-brand-500/10 dark:text-brand-300">
           <EnvelopeSimple size={22} weight="bold" />
         </div>
         <h1 className="mb-2 text-xl font-semibold text-foreground">
@@ -45,7 +45,7 @@ export default function ConnectResendPage({
         )}
         <a
           href="/api/oauth/resend/start"
-          className="inline-block self-start rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 active:scale-[0.98]"
+          className="inline-block self-start rounded-full bg-brand-800 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand-800/20 transition-colors hover:bg-brand-700 active:scale-[0.98]"
         >
           Connect with Resend
         </a>

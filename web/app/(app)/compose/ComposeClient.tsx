@@ -39,8 +39,8 @@ export function ComposeClient({ mailboxes }: { mailboxes: Mailbox[] }) {
   }
 
   return (
-    <main className="flex min-h-screen justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-2xl">
+    <main className="flex min-h-screen justify-center bg-brand-50/50 px-4 py-12 dark:bg-zinc-950">
+      <div className="w-full max-w-2xl rounded-2xl border border-black/4 bg-white p-8 shadow-sm dark:border-white/5 dark:bg-zinc-900">
         <button
           type="button"
           onClick={() => router.push("/inbox")}
@@ -92,13 +92,13 @@ export function ComposeClient({ mailboxes }: { mailboxes: Mailbox[] }) {
             required
             rows={12}
             placeholder="Write your message..."
-            className="rounded-lg border border-black/10 p-3 text-sm outline-none transition-colors focus:border-indigo-400 dark:border-white/10"
+            className="rounded-xl border border-black/10 p-3 text-sm outline-none transition-colors focus:border-brand-400 dark:border-white/10"
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"
             disabled={sending || !mailboxId}
-            className="flex w-fit items-center gap-2 self-start rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+            className="flex w-fit items-center gap-2 self-start rounded-full bg-brand-800 px-6 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand-800/20 transition-colors hover:bg-brand-700 disabled:opacity-50"
           >
             <PaperPlaneTilt size={16} weight="bold" />
             {sending ? "Sending..." : "Send"}

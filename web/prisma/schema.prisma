@@ -83,6 +83,10 @@ model Email {
   status        String
   read          Boolean   @default(false)
   starred       Boolean   @default(false)
+  important     Boolean   @default(false)
+  archived      Boolean   @default(false)
+  spam          Boolean   @default(false)
+  trashedAt     DateTime?
   sentAt        DateTime?
   receivedAt    DateTime?
   createdAt     DateTime  @default(now())

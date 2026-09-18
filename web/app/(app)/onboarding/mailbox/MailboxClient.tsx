@@ -36,11 +36,11 @@ export function MailboxClient({ domains }: { domains: Domain[] }) {
   const selectedDomain = domains.find((d) => d.id === domainId);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md">
+    <main className="flex min-h-screen items-center justify-center bg-brand-50/50 px-4 dark:bg-zinc-950">
+      <div className="w-full max-w-md rounded-2xl border border-black/4 bg-white p-8 shadow-sm dark:border-white/5 dark:bg-zinc-900">
         <BrandMark className="mb-10" />
         <OnboardingSteps current={3} />
-        <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
+        <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-800 dark:bg-brand-500/10 dark:text-brand-300">
           <At size={22} weight="bold" />
         </div>
         <h1 className="mb-2 text-xl font-semibold text-foreground">
@@ -62,14 +62,14 @@ export function MailboxClient({ domains }: { domains: Domain[] }) {
                 value={localPart}
                 onChange={(e) => setLocalPart(e.target.value)}
                 required
-                className="min-w-0 flex-1 rounded-lg border border-black/10 px-3 py-2 text-sm outline-none transition-colors focus:border-indigo-400 dark:border-white/10"
+                className="min-w-0 flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm outline-none transition-colors focus:border-brand-400 dark:border-white/10"
               />
               <span className="text-zinc-400">@</span>
               <select
                 aria-label="Domain"
                 value={domainId}
                 onChange={(e) => setDomainId(e.target.value)}
-                className="rounded-lg border border-black/10 px-3 py-2 text-sm outline-none transition-colors focus:border-indigo-400 dark:border-white/10"
+                className="rounded-xl border border-black/10 px-3 py-2 text-sm outline-none transition-colors focus:border-brand-400 dark:border-white/10"
               >
                 {domains.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -91,7 +91,7 @@ export function MailboxClient({ domains }: { domains: Domain[] }) {
           <button
             type="submit"
             disabled={loading || !domainId}
-            className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50"
+            className="rounded-full bg-brand-800 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand-800/20 transition-colors hover:bg-brand-700 active:scale-[0.98] disabled:opacity-50"
           >
             {loading ? "Creating..." : "Create mailbox"}
           </button>

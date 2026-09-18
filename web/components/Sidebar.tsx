@@ -1,61 +1,81 @@
 "use client";
 
-import { EnvelopeSimple, PencilSimpleLine } from "@phosphor-icons/react";
-import { BrandMark } from "@/components/BrandMark";
+import {
+  Archive,
+  EnvelopeSimple,
+  Flag,
+  PaperPlaneTilt,
+  PencilSimpleLine,
+  ShieldWarning,
+  Star,
+  Stack,
+  TrashSimple,
+} from "@phosphor-icons/react";
+import type { FolderId } from "@/lib/mail-folders";
 
 type Mailbox = { id: string; address: string };
-type User = { name: string; email: string };
 
-function initial(user: User): string {
-  return (user.name || user.email).charAt(0).toUpperCase();
-}
+const FOLDER_NAV: Array<{ id: FolderId; label: string; icon: typeof EnvelopeSimple }> = [
+  { id: "inbox", label: "Inbox", icon: EnvelopeSimple },
+  { id: "starred", label: "Starred", icon: Star },
+  { id: "important", label: "Important", icon: Flag },
+  { id: "sent", label: "Sent", icon: PaperPlaneTilt },
+  { id: "archive", label: "Archive", icon: Archive },
+  { id: "spam", label: "Spam", icon: ShieldWarning },
+  { id: "trash", label: "Trash", icon: TrashSimple },
+  { id: "all", label: "All Mail", icon: Stack },
+];
 
 export function Sidebar({
-  user,
   mailboxes,
   activeMailboxId,
+  activeFolder,
   unreadCount,
   onSelectMailbox,
+  onSelectFolder,
 }: {
-  user: User;
   mailboxes: Mailbox[];
   activeMailboxId: string | null;
+  activeFolder: FolderId;
   unreadCount: number;
   onSelectMailbox: (id: string) => void;
+  onSelectFolder: (folder: FolderId) => void;
 }) {
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-black/10 bg-white p-4 dark:border-white/10 dark:bg-zinc-950">
-      <BrandMark className="mb-6 px-1" />
-
-      <div className="mb-6 flex items-center gap-3 rounded-lg bg-zinc-50 p-3 dark:bg-white/[.04]">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
-          {initial(user)}
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">
-            {user.name || user.email}
-          </p>
-          <p className="truncate text-xs text-zinc-500">{user.email}</p>
-        </div>
-      </div>
-
+    <aside className="flex w-64 shrink-0 flex-col border-r border-black/4 p-4 dark:border-white/5">
       <a
         href="/compose"
-        className="mb-6 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 active:scale-[0.98]"
+        className="mb-6 flex items-center justify-center gap-2 rounded-full bg-brand-800 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand-800/20 transition-colors hover:bg-brand-700 active:scale-[0.98]"
       >
         <PencilSimpleLine size={18} weight="bold" />
         Compose mail
       </a>
 
-      <div className="flex items-center gap-3 rounded-lg bg-indigo-50 px-3 py-2.5 text-sm font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
-        <EnvelopeSimple size={18} weight="fill" />
-        <span className="flex-1">Inbox</span>
-        {unreadCount > 0 && (
-          <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-semibold text-white">
-            {unreadCount}
-          </span>
-        )}
-      </div>
+      <nav className="flex flex-col gap-1">
+        {FOLDER_NAV.map(({ id, label, icon: Icon }) => {
+          const active = id === activeFolder;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onSelectFolder(id)}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                active
+                  ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+                  : "text-zinc-600 hover:bg-black/3 dark:text-zinc-400 dark:hover:bg-white/5"
+              }`}
+            >
+              <Icon size={18} weight={active ? "fill" : "regular"} />
+              <span className="flex-1">{label}</span>
+              {id === "inbox" && unreadCount > 0 && (
+                <span className="rounded-full bg-brand-800 px-2 py-0.5 text-xs font-semibold text-white">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
 
       {mailboxes.length > 1 && (
         <>
@@ -68,10 +88,10 @@ export function Sidebar({
                 key={mailbox.id}
                 type="button"
                 onClick={() => onSelectMailbox(mailbox.id)}
-                className={`truncate rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                className={`truncate rounded-xl px-3 py-2 text-left text-sm transition-colors ${
                   mailbox.id === activeMailboxId
-                    ? "bg-black/[.06] font-medium text-foreground dark:bg-white/[.08]"
-                    : "text-zinc-600 hover:bg-black/[.03] dark:text-zinc-400 dark:hover:bg-white/[.05]"
+                    ? "bg-black/6 font-medium text-foreground dark:bg-white/8"
+                    : "text-zinc-600 hover:bg-black/3 dark:text-zinc-400 dark:hover:bg-white/5"
                 }`}
               >
                 {mailbox.address}

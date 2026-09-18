@@ -35,32 +35,42 @@ export async function POST(
   if (event.type === "email.received") {
     const emailResult = await getReceivedEmail(resend, event.data.email_id);
     const email = emailResult?.data;
-    if (email) {
-      const recipient = email.to.find(Boolean);
-      const mailbox = recipient
-        ? await prisma.mailbox.findUnique({ where: { address: recipient } })
-        : null;
-      if (mailbox) {
-        const existing = await prisma.email.findFirst({
-          where: { resendEmailId: event.data.email_id },
+    // Couldn't fetch the email body from Resend (rate limit, transient token
+    // issue, etc) — fail loudly so Resend retries this event instead of
+    // silently losing the message. A missing mailbox match, below, is a
+    // legitimate no-op and stays a 200.
+    if (!email) {
+      console.error("Failed to fetch received email", event.data.email_id);
+      return NextResponse.json(
+        { error: "Failed to fetch email from Resend" },
+        { status: 502 }
+      );
+    }
+
+    const recipient = email.to.find(Boolean);
+    const mailbox = recipient
+      ? await prisma.mailbox.findUnique({ where: { address: recipient } })
+      : null;
+    if (mailbox) {
+      const existing = await prisma.email.findFirst({
+        where: { resendEmailId: event.data.email_id },
+      });
+      if (!existing) {
+        await prisma.email.create({
+          data: {
+            mailboxId: mailbox.id,
+            resendEmailId: event.data.email_id,
+            direction: "in",
+            from: email.from,
+            to: email.to,
+            cc: email.cc ?? [],
+            subject: email.subject ?? "",
+            text: email.text,
+            html: email.html,
+            status: "received",
+            receivedAt: new Date(),
+          },
         });
-        if (!existing) {
-          await prisma.email.create({
-            data: {
-              mailboxId: mailbox.id,
-              resendEmailId: event.data.email_id,
-              direction: "in",
-              from: email.from,
-              to: email.to,
-              cc: email.cc ?? [],
-              subject: email.subject ?? "",
-              text: email.text,
-              html: email.html,
-              status: "received",
-              receivedAt: new Date(),
-            },
-          });
-        }
       }
     }
   } else if (

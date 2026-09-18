@@ -4,6 +4,9 @@ import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/session";
 import { getConnectionForUser } from "@/lib/resend-client";
 import { sendEmail } from "@/lib/resend";
+import { folderWhere, isFolderId } from "@/lib/mail-folders";
+
+const MUTABLE_FIELDS = ["read", "starred", "important", "archived", "spam"] as const;
 
 export async function GET(req: Request) {
   const userId = await getUserId(req.headers);
@@ -13,9 +16,12 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const mailboxId = url.searchParams.get("mailboxId");
-  const direction = url.searchParams.get("direction");
+  const folder = url.searchParams.get("folder") ?? "inbox";
   if (!mailboxId) {
     return NextResponse.json({ error: "mailboxId is required" }, { status: 400 });
+  }
+  if (!isFolderId(folder)) {
+    return NextResponse.json({ error: "invalid folder" }, { status: 400 });
   }
 
   const mailbox = await prisma.mailbox.findFirst({
@@ -26,14 +32,62 @@ export async function GET(req: Request) {
   }
 
   const emails = await prisma.email.findMany({
-    where: {
-      mailboxId,
-      ...(direction ? { direction } : {}),
-    },
+    where: { mailboxId, ...folderWhere(folder) },
     orderBy: { createdAt: "desc" },
   });
 
   return NextResponse.json({ emails });
+}
+
+// Bulk flag update (mark read, star, archive, spam, important) for a set of
+// emails at once — used by the inbox toolbar's bulk actions.
+export async function PATCH(req: Request) {
+  const userId = await getUserId(req.headers);
+  if (!userId) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json();
+  const ids: string[] | undefined = body?.ids;
+  const trashed: boolean | undefined = body?.trashed;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return NextResponse.json({ error: "ids is required" }, { status: 400 });
+  }
+
+  const data: Record<string, boolean | Date | null> = {};
+  for (const field of MUTABLE_FIELDS) {
+    if (typeof body?.[field] === "boolean") data[field] = body[field];
+  }
+  if (typeof trashed === "boolean") {
+    data.trashedAt = trashed ? new Date() : null;
+  }
+
+  const { count } = await prisma.email.updateMany({
+    where: { id: { in: ids }, mailbox: { userId } },
+    data,
+  });
+
+  return NextResponse.json({ updated: count });
+}
+
+// Bulk permanent delete — used by "Delete forever" and "Empty trash".
+export async function DELETE(req: Request) {
+  const userId = await getUserId(req.headers);
+  if (!userId) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json();
+  const ids: string[] | undefined = body?.ids;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return NextResponse.json({ error: "ids is required" }, { status: 400 });
+  }
+
+  const { count } = await prisma.email.deleteMany({
+    where: { id: { in: ids }, mailbox: { userId } },
+  });
+
+  return NextResponse.json({ deleted: count });
 }
 
 export async function POST(req: Request) {

@@ -14,9 +14,9 @@ export function OnboardingSteps({ current }: { current: 1 | 2 | 3 }) {
             <div
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                 done
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-brand-800 text-white"
                   : active
-                    ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300"
+                    ? "bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300"
                     : "bg-zinc-100 text-zinc-400 dark:bg-white/[.06]"
               }`}
             >

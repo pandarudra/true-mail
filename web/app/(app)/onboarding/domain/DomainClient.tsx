@@ -110,11 +110,11 @@ export function DomainClient({
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-16">
-      <div className="w-full max-w-lg">
+    <main className="flex min-h-screen items-center justify-center bg-brand-50/50 px-4 py-16 dark:bg-zinc-950">
+      <div className="w-full max-w-lg rounded-2xl border border-black/4 bg-white p-8 shadow-sm dark:border-white/5 dark:bg-zinc-900">
         <BrandMark className="mb-10" />
         <OnboardingSteps current={2} />
-        <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
+        <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-800 dark:bg-brand-500/10 dark:text-brand-300">
           <Globe size={22} weight="bold" />
         </div>
         <h1 className="mb-2 text-xl font-semibold text-foreground">
@@ -134,7 +134,7 @@ export function DomainClient({
                   type="button"
                   disabled={loading}
                   onClick={() => handleImport(d.id)}
-                  className="flex items-center justify-between rounded-lg border border-black/10 px-4 py-3 text-left text-sm transition-colors hover:border-indigo-400 disabled:opacity-50 dark:border-white/10"
+                  className="flex items-center justify-between rounded-xl border border-black/10 px-4 py-3 text-left text-sm transition-colors hover:border-brand-400 disabled:opacity-50 dark:border-white/10"
                 >
                   <span className="font-medium text-foreground">{d.name}</span>
                   <span className="text-xs text-zinc-500">{d.status}</span>
@@ -144,7 +144,7 @@ export function DomainClient({
             <button
               type="button"
               onClick={() => setAddingNew(true)}
-              className="text-sm font-medium text-indigo-600 hover:underline"
+              className="text-sm font-medium text-brand-800 hover:underline"
             >
               Add a new domain instead
             </button>
@@ -168,7 +168,7 @@ export function DomainClient({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="rounded-lg border border-black/10 px-3 py-2 text-sm outline-none transition-colors focus:border-indigo-400 dark:border-white/10"
+                  className="rounded-xl border border-black/10 px-3 py-2 text-sm outline-none transition-colors focus:border-brand-400 dark:border-white/10"
                 />
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
@@ -176,7 +176,7 @@ export function DomainClient({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="self-start rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50"
+                  className="self-start rounded-full bg-brand-800 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand-800/20 transition-colors hover:bg-brand-700 active:scale-[0.98] disabled:opacity-50"
                 >
                   {loading ? "Creating..." : "Continue"}
                 </button>
@@ -208,7 +208,7 @@ export function DomainClient({
               type="button"
               onClick={handleVerify}
               disabled={loading}
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50"
+              className="flex items-center gap-2 rounded-full bg-brand-800 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand-800/20 transition-colors hover:bg-brand-700 active:scale-[0.98] disabled:opacity-50"
             >
               {domain.status === "verified" && <CheckCircle size={16} weight="fill" />}
               {loading

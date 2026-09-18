@@ -1,9 +1,9 @@
+import Image from "next/image";
+
 export function BrandMark({ className = "" }: { className?: string }) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-sm font-semibold text-white">
-        T
-      </div>
+      <Image src="/icon.png" alt="" width={28} height={28} className="h-7 w-7 rounded-lg" />
       <span className="text-lg font-semibold tracking-tight text-foreground">
         TrueMail
       </span>

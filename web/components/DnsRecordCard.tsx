@@ -30,7 +30,7 @@ export function DnsRecordCard({ record }: { record: DnsRecord }) {
   }
 
   return (
-    <div className="rounded-lg border border-black/10 p-4 dark:border-white/10">
+    <div className="rounded-xl border border-black/10 p-4 dark:border-white/10">
       <div className="mb-2 flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
           {record.record} · {record.type}
@@ -53,7 +53,7 @@ export function DnsRecordCard({ record }: { record: DnsRecord }) {
         <button
           type="button"
           onClick={handleCopy}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-black/10 px-2 py-1 text-xs font-medium transition-colors hover:bg-black/[.03] dark:border-white/10 dark:hover:bg-white/[.05]"
+          className="flex shrink-0 items-center gap-1.5 rounded-full border border-black/10 px-2 py-1 text-xs font-medium transition-colors hover:bg-black/3 dark:border-white/10 dark:hover:bg-white/[.05]"
         >
           {copied ? <Check size={13} weight="bold" /> : <Copy size={13} />}
           {copied ? "Copied" : "Copy"}
