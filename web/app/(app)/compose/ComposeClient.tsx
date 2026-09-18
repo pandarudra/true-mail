@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, PaperPlaneTilt } from "@phosphor-icons/react";
+import { DrawablyCard, DrawablyDivider, DrawablyTextarea } from "drawably/react";
+import { Button } from "@/components/ui/Button";
 import { readError } from "@/lib/api-error";
 
 type Mailbox = { id: string; address: string };
@@ -39,72 +41,79 @@ export function ComposeClient({ mailboxes }: { mailboxes: Mailbox[] }) {
   }
 
   return (
-    <main className="flex min-h-screen justify-center bg-brand-50/50 px-4 py-12 dark:bg-zinc-950">
-      <div className="w-full max-w-2xl rounded-2xl border border-black/4 bg-white p-8 shadow-sm dark:border-white/5 dark:bg-zinc-900">
+    <main className="flex min-h-screen justify-center bg-surface-subtle px-4 py-12">
+      <DrawablyCard roughness={0.3} boil={0.1} className="w-full max-w-2xl bg-surface p-8">
         <button
           type="button"
           onClick={() => router.push("/inbox")}
-          className="mb-6 flex items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-foreground"
+          className="mb-6 flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-foreground"
         >
           <ArrowLeft size={16} />
           Back to inbox
         </button>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <h1 className="text-xl font-semibold text-foreground">New message</h1>
-          <label className="flex items-center gap-3 border-b border-black/10 py-2 text-sm dark:border-white/10">
-            <span className="w-16 shrink-0 text-zinc-500">From</span>
-            <select
-              value={mailboxId}
-              onChange={(e) => setMailboxId(e.target.value)}
-              className="flex-1 bg-transparent outline-none"
-            >
-              {mailboxes.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.address}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-3 border-b border-black/10 py-2 text-sm dark:border-white/10">
-            <span className="w-16 shrink-0 text-zinc-500">To</span>
-            <input
-              type="text"
-              placeholder="someone@example.com, another@example.com"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              required
-              className="flex-1 bg-transparent outline-none"
-            />
-          </label>
-          <label className="flex items-center gap-3 border-b border-black/10 py-2 text-sm dark:border-white/10">
-            <span className="w-16 shrink-0 text-zinc-500">Subject</span>
-            <input
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              required
-              className="flex-1 bg-transparent outline-none"
-            />
-          </label>
-          <textarea
+          <div>
+            <label className="flex items-center gap-3 py-2 text-sm">
+              <span className="w-16 shrink-0 text-text-secondary">From</span>
+              <select
+                value={mailboxId}
+                onChange={(e) => setMailboxId(e.target.value)}
+                className="flex-1 bg-transparent text-foreground outline-none"
+              >
+                {mailboxes.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.address}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <DrawablyDivider roughness={0.3} boil={0.1} />
+          </div>
+          <div>
+            <label className="flex items-center gap-3 py-2 text-sm">
+              <span className="w-16 shrink-0 text-text-secondary">To</span>
+              <input
+                type="text"
+                placeholder="someone@example.com, another@example.com"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                required
+                className="flex-1 bg-transparent text-foreground outline-none placeholder:text-text-muted"
+              />
+            </label>
+            <DrawablyDivider roughness={0.3} boil={0.1} />
+          </div>
+          <div>
+            <label className="flex items-center gap-3 py-2 text-sm">
+              <span className="w-16 shrink-0 text-text-secondary">Subject</span>
+              <input
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                required
+                className="flex-1 bg-transparent text-foreground outline-none"
+              />
+            </label>
+            <DrawablyDivider roughness={0.3} boil={0.1} />
+          </div>
+          <DrawablyTextarea
+            roughness={0.3}
+            boil={0.1}
             value={text}
             onChange={(e) => setText(e.target.value)}
             required
             rows={12}
             placeholder="Write your message..."
-            className="rounded-xl border border-black/10 p-3 text-sm outline-none transition-colors focus:border-brand-400 dark:border-white/10"
+            className="text-sm text-foreground"
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={sending || !mailboxId}
-            className="flex w-fit items-center gap-2 self-start rounded-full bg-brand-800 px-6 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand-800/20 transition-colors hover:bg-brand-700 disabled:opacity-50"
-          >
+          <Button type="submit" disabled={sending || !mailboxId} className="w-fit self-start">
             <PaperPlaneTilt size={16} weight="bold" />
             {sending ? "Sending..." : "Send"}
-          </button>
+          </Button>
         </form>
-      </div>
+      </DrawablyCard>
     </main>
   );
 }

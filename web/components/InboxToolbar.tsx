@@ -9,7 +9,10 @@ import {
   ShieldWarning,
   TrashSimple,
 } from "@phosphor-icons/react";
+import { DrawablyBadge, DrawablyDivider } from "drawably/react";
 import { FOLDERS, type FolderId } from "@/lib/mail-folders";
+import { IconButton } from "@/components/ui/IconButton";
+import { Button } from "@/components/ui/Button";
 
 function timeAgo(date: Date, now: Date): string {
   const seconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
@@ -64,116 +67,82 @@ export function InboxToolbar({
   }, []);
 
   return (
-    <div className="flex items-center justify-between border-b border-black/4 px-6 py-3 dark:border-white/5">
+    <div>
+    <div className="flex items-center justify-between px-6 py-3">
       <div className="flex items-center gap-3">
         <h1 className="text-base font-semibold text-foreground">{label}</h1>
-        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-800 dark:bg-brand-500/10 dark:text-brand-300">
+        <DrawablyBadge roughness={0.3} boil={0.1} className="tabular-nums">
           {totalCount}
-        </span>
+        </DrawablyBadge>
 
         {folder === "trash" ? (
           <>
             {hasSelection && (
-              <ToolbarButton onClick={onRestoreSelected} icon={ArrowUUpLeft}>
+              <Button variant="secondary" onClick={onRestoreSelected}>
+                <ArrowUUpLeft size={16} />
                 Restore ({selectedCount})
-              </ToolbarButton>
+              </Button>
             )}
-            <ToolbarButton
+            <Button
+              variant="destructive"
               onClick={hasSelection ? onDeleteForeverSelected : onEmptyTrash}
-              icon={TrashSimple}
-              danger
               disabled={!hasSelection && totalCount === 0}
             >
+              <TrashSimple size={16} />
               {hasSelection ? `Delete forever (${selectedCount})` : "Empty trash"}
-            </ToolbarButton>
+            </Button>
           </>
         ) : folder === "spam" ? (
           hasSelection ? (
             <>
-              <ToolbarButton onClick={onNotSpamSelected} icon={ArrowUUpLeft}>
+              <Button variant="secondary" onClick={onNotSpamSelected}>
+                <ArrowUUpLeft size={16} />
                 Not spam ({selectedCount})
-              </ToolbarButton>
-              <ToolbarButton onClick={onTrashSelected} icon={TrashSimple} danger>
+              </Button>
+              <Button variant="destructive" onClick={onTrashSelected}>
+                <TrashSimple size={16} />
                 Delete ({selectedCount})
-              </ToolbarButton>
+              </Button>
             </>
           ) : (
-            <MarkAllReadButton onClick={onMarkAllRead} disabled={unreadCount === 0} />
+            <Button variant="secondary" onClick={onMarkAllRead} disabled={unreadCount === 0}>
+              <CheckSquare size={16} />
+              Mark all read
+            </Button>
           )
         ) : hasSelection ? (
           <>
-            <ToolbarButton onClick={onArchiveSelected} icon={Archive}>
+            <Button variant="secondary" onClick={onArchiveSelected}>
+              <Archive size={16} />
               Archive ({selectedCount})
-            </ToolbarButton>
-            <ToolbarButton onClick={onSpamSelected} icon={ShieldWarning}>
+            </Button>
+            <Button variant="secondary" onClick={onSpamSelected}>
+              <ShieldWarning size={16} />
               Spam
-            </ToolbarButton>
-            <ToolbarButton onClick={onTrashSelected} icon={TrashSimple} danger>
+            </Button>
+            <Button variant="destructive" onClick={onTrashSelected}>
+              <TrashSimple size={16} />
               Delete ({selectedCount})
-            </ToolbarButton>
+            </Button>
           </>
         ) : (
-          <MarkAllReadButton onClick={onMarkAllRead} disabled={unreadCount === 0} />
+          <Button variant="secondary" onClick={onMarkAllRead} disabled={unreadCount === 0}>
+            <CheckSquare size={16} />
+            Mark all read
+          </Button>
         )}
       </div>
 
       <div className="flex items-center gap-3">
         {updatedAt && (
-          <span className="text-xs text-zinc-400">Updated {timeAgo(updatedAt, now)}</span>
+          <span className="font-mono text-xs text-text-muted">Updated {timeAgo(updatedAt, now)}</span>
         )}
-        <button
-          type="button"
-          aria-label="Refresh"
-          onClick={onRefresh}
-          className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-black/3 dark:text-zinc-400 dark:hover:bg-white/5"
-        >
+        <IconButton label="Refresh" onClick={onRefresh}>
           <ArrowClockwise size={16} className={refreshing ? "animate-spin" : ""} />
-        </button>
+        </IconButton>
       </div>
     </div>
-  );
-}
-
-function MarkAllReadButton({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-black/3 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-white/5"
-    >
-      <CheckSquare size={16} />
-      Mark all read
-    </button>
-  );
-}
-
-function ToolbarButton({
-  onClick,
-  icon: Icon,
-  danger,
-  disabled,
-  children,
-}: {
-  onClick: () => void;
-  icon: typeof TrashSimple;
-  danger?: boolean;
-  disabled?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-        danger
-          ? "text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-          : "text-foreground hover:bg-black/3 dark:hover:bg-white/5"
-      }`}
-    >
-      <Icon size={16} />
-      {children}
-    </button>
+    <DrawablyDivider roughness={0.3} boil={0.1} />
+    </div>
   );
 }

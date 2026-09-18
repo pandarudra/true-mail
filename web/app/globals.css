@@ -1,13 +1,46 @@
 @import "tailwindcss";
 
+/* Manual class-based dark mode (toggle-able), instead of OS-only */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Neutral surfaces */
+  --background: #f8f9fc;
+  --surface: #ffffff;
+  --surface-subtle: #f5f6fa;
+  --foreground: #17181c;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --border: #e8e9ef;
+
+  /* Active-nav / brand wash */
+  --nav-active-bg: #eeecfd;
+  --nav-active-text: #6957f6;
+}
+
+.dark {
+  --background: #0b0c0f;
+  --surface: #131417;
+  --surface-subtle: #1a1b1f;
+  --foreground: #f4f4f6;
+  --text-secondary: #9498a3;
+  --text-muted: #6b6f7b;
+  --border: #26272c;
+
+  --nav-active-bg: rgba(130, 116, 249, 0.14);
+  --nav-active-text: #a398fa;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-nav-active-bg: var(--nav-active-bg);
+  --color-nav-active-text: var(--nav-active-text);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
@@ -21,17 +54,68 @@
   --color-brand-600: #7767f9;
   --color-brand-700: #6957f6;
   --color-brand-800: #503fe0;
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Restrained radius scale */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, sans-serif;
+}
+
+/* Fixed-tone brand panel (auth/onboarding split screen) — stays constant across light/dark app theme */
+.bg-ink {
+  background-color: #130f1f;
+}
+
+/* Subtle noise so the brand panel isn't a flat vector fill */
+.bg-grain-texture {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* drawably theming: brand purple instead of its default pen-blue */
+:root {
+  --drawably-stroke: var(--color-brand-700);
+  --drawably-fill: var(--color-brand-800);
+  --drawably-error: #dc2626;
+  --drawably-success: #16a34a;
+}
+
+.dark {
+  /* brand-700 text/stroke reads ~2.75:1 on a near-black surface; brand-300 keeps it accessible */
+  --drawably-stroke: var(--color-brand-300);
+}
+
+/* drawably defaults to Inter; keep it on the app's own Geist Sans */
+.drawably-host,
+.drawably-button {
+  font-family: inherit;
+}
+
+/* drawably's default 6px vertical padding puts the outline variant's bottom
+   stroke right under the text baseline; match the app's roomier control sizing */
+.drawably-button {
+  padding: 9px 16px;
+}
+
+.drawably-inputbox input,
+.drawably-textarea textarea {
+  padding: 9px 12px;
+}
+
+.drawably-inputbox input::placeholder,
+.drawably-textarea textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* icon-only buttons: square, tight padding instead of the text-button 9px/16px.
+   Two-class selector so it wins over .drawably-button regardless of source order. */
+.drawably-button.drawably-icon-btn {
+  padding: 8px;
 }

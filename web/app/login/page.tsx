@@ -4,8 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeClosed } from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth-client";
-import { BrandMark } from "@/components/BrandMark";
 import { GoogleIcon } from "@/components/GoogleIcon";
+import { AuthShell } from "@/components/AuthShell";
+import { DrawablyDivider } from "drawably/react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { IconButton } from "@/components/ui/IconButton";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -32,81 +36,75 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-brand-50/50 px-4 dark:bg-zinc-950">
-      <div className="w-full max-w-sm rounded-2xl border border-black/4 bg-white p-8 shadow-sm dark:border-white/5 dark:bg-zinc-900">
-        <BrandMark className="mb-10 justify-center" />
-        <h1 className="mb-1 text-xl font-semibold text-foreground">
-          Welcome back
-        </h1>
-        <p className="mb-8 text-sm text-zinc-500">Log in to your inbox.</p>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="email" className="text-sm font-medium text-foreground">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+    <AuthShell>
+      <p className="mb-3 font-mono text-xs uppercase tracking-[0.14em] text-brand-600 dark:text-brand-300">
+        Sign in
+      </p>
+      <h1 className="mb-1 text-2xl font-semibold tracking-tight text-foreground">Welcome back</h1>
+      <p className="mb-8 text-sm text-text-secondary">Log in to your inbox.</p>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="email" className="text-sm font-medium text-foreground">
+            Email
+          </label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="password" className="text-sm font-medium text-foreground">
+            Password
+          </label>
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
-              className="rounded-xl border border-black/10 px-3 py-2 text-sm outline-none transition-colors focus:border-brand-400 dark:border-white/10"
+              className="pr-10"
             />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="password" className="text-sm font-medium text-foreground">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full rounded-xl border border-black/10 px-3 py-2 pr-10 text-sm outline-none transition-colors focus:border-brand-400 dark:border-white/10"
-              />
-              <button
-                type="button"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+            <span className="absolute right-1 top-1/2 -translate-y-1/2">
+              <IconButton
+                label={showPassword ? "Hide password" : "Show password"}
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
               >
                 {showPassword ? <EyeClosed size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
+              </IconButton>
+            </span>
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-full bg-brand-800 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand-800/20 transition-colors hover:bg-brand-700 active:scale-[0.98] disabled:opacity-50"
-          >
-            {loading ? "Logging in..." : "Log in"}
-          </button>
-        </form>
-        <div className="my-6 flex items-center gap-3">
-          <div className="h-px flex-1 bg-black/10 dark:bg-white/10" />
-          <span className="text-xs text-zinc-400">or</span>
-          <div className="h-px flex-1 bg-black/10 dark:bg-white/10" />
         </div>
-        <button
-          type="button"
-          onClick={() => authClient.signIn.social({ provider: "google" })}
-          className="flex w-full items-center justify-center gap-2 rounded-full border border-black/10 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-black/3 dark:border-white/10 dark:hover:bg-white/5"
-        >
-          <GoogleIcon />
-          Continue with Google
-        </button>
-        <p className="mt-6 text-center text-sm text-zinc-500">
-          No account?{" "}
-          <a href="/signup" className="font-medium text-brand-800">
-            Sign up
-          </a>
-        </p>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <Button type="submit" disabled={loading}>
+          {loading ? "Logging in..." : "Log in"}
+        </Button>
+      </form>
+      <div className="my-6 flex items-center gap-3">
+        <DrawablyDivider roughness={0.3} boil={0.1} className="flex-1" />
+        <span className="text-xs text-text-muted">or</span>
+        <DrawablyDivider roughness={0.3} boil={0.1} className="flex-1" />
       </div>
-    </main>
+      <Button
+        type="button"
+        variant="secondary"
+        className="w-full"
+        onClick={() => authClient.signIn.social({ provider: "google" })}
+      >
+        <GoogleIcon />
+        Continue with Google
+      </Button>
+      <p className="mt-6 text-sm text-text-secondary">
+        No account?{" "}
+        <a href="/signup" className="font-medium text-brand-800 dark:text-brand-300">
+          Sign up
+        </a>
+      </p>
+    </AuthShell>
   );
 }

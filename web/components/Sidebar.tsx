@@ -11,11 +11,17 @@ import {
   Stack,
   TrashSimple,
 } from "@phosphor-icons/react";
+import { DrawablyBadge } from "drawably/react";
 import type { FolderId } from "@/lib/mail-folders";
+import { DrawablyLinkButton } from "@/components/ui/DrawablyLinkButton";
 
 type Mailbox = { id: string; address: string };
 
-const FOLDER_NAV: Array<{ id: FolderId; label: string; icon: typeof EnvelopeSimple }> = [
+const FOLDER_NAV: Array<{
+  id: FolderId;
+  label: string;
+  icon: typeof EnvelopeSimple;
+}> = [
   { id: "inbox", label: "Inbox", icon: EnvelopeSimple },
   { id: "starred", label: "Starred", icon: Star },
   { id: "important", label: "Important", icon: Flag },
@@ -42,14 +48,11 @@ export function Sidebar({
   onSelectFolder: (folder: FolderId) => void;
 }) {
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-black/4 p-4 dark:border-white/5">
-      <a
-        href="/compose"
-        className="mb-6 flex items-center justify-center gap-2 rounded-full bg-brand-800 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand-800/20 transition-colors hover:bg-brand-700 active:scale-[0.98]"
-      >
+    <aside className="flex w-64 shrink-0 flex-col border-r border-border p-4">
+      <DrawablyLinkButton href="/compose" className="mb-6 justify-center ">
         <PencilSimpleLine size={18} weight="bold" />
         Compose mail
-      </a>
+      </DrawablyLinkButton>
 
       <nav className="flex flex-col gap-1">
         {FOLDER_NAV.map(({ id, label, icon: Icon }) => {
@@ -62,15 +65,15 @@ export function Sidebar({
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
                 active
                   ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
-                  : "text-zinc-600 hover:bg-black/3 dark:text-zinc-400 dark:hover:bg-white/5"
+                  : "text-text-secondary hover:bg-surface-subtle"
               }`}
             >
               <Icon size={18} weight={active ? "fill" : "regular"} />
               <span className="flex-1">{label}</span>
               {id === "inbox" && unreadCount > 0 && (
-                <span className="rounded-full bg-brand-800 px-2 py-0.5 text-xs font-semibold text-white">
+                <DrawablyBadge roughness={0.3} boil={0.1} className="tabular-nums">
                   {unreadCount}
-                </span>
+                </DrawablyBadge>
               )}
             </button>
           );
@@ -79,7 +82,7 @@ export function Sidebar({
 
       {mailboxes.length > 1 && (
         <>
-          <p className="mb-2 mt-6 px-1 text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <p className="mb-2 mt-6 px-1 text-xs font-medium uppercase tracking-wide text-text-secondary">
             Mailboxes
           </p>
           <nav className="flex flex-col gap-1">
@@ -90,8 +93,8 @@ export function Sidebar({
                 onClick={() => onSelectMailbox(mailbox.id)}
                 className={`truncate rounded-xl px-3 py-2 text-left text-sm transition-colors ${
                   mailbox.id === activeMailboxId
-                    ? "bg-black/6 font-medium text-foreground dark:bg-white/8"
-                    : "text-zinc-600 hover:bg-black/3 dark:text-zinc-400 dark:hover:bg-white/5"
+                    ? "bg-surface-subtle font-medium text-foreground"
+                    : "text-text-secondary hover:bg-surface-subtle"
                 }`}
               >
                 {mailbox.address}

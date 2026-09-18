@@ -3,9 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle, Globe } from "@phosphor-icons/react";
+import { DrawablyButton } from "drawably/react";
 import { DnsRecordCard } from "@/components/DnsRecordCard";
-import { BrandMark } from "@/components/BrandMark";
 import { OnboardingSteps } from "@/components/OnboardingSteps";
+import { AuthShell } from "@/components/AuthShell";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { readError } from "@/lib/api-error";
 
 export type Domain = {
@@ -110,121 +113,110 @@ export function DomainClient({
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-brand-50/50 px-4 py-16 dark:bg-zinc-950">
-      <div className="w-full max-w-lg rounded-2xl border border-black/4 bg-white p-8 shadow-sm dark:border-white/5 dark:bg-zinc-900">
-        <BrandMark className="mb-10" />
-        <OnboardingSteps current={2} />
-        <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-800 dark:bg-brand-500/10 dark:text-brand-300">
-          <Globe size={22} weight="bold" />
-        </div>
-        <h1 className="mb-2 text-xl font-semibold text-foreground">
-          Connect your domain
-        </h1>
-        {!domain && !addingNew && importable.length > 0 && (
-          <>
-            <p className="mb-6 text-sm text-zinc-500">
-              These domains are already on your Resend account. Pick one to
-              use it here, or add a new one.
-            </p>
-            {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
-            <div className="mb-6 flex flex-col gap-2">
-              {importable.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => handleImport(d.id)}
-                  className="flex items-center justify-between rounded-xl border border-black/10 px-4 py-3 text-left text-sm transition-colors hover:border-brand-400 disabled:opacity-50 dark:border-white/10"
-                >
-                  <span className="font-medium text-foreground">{d.name}</span>
-                  <span className="text-xs text-zinc-500">{d.status}</span>
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setAddingNew(true)}
-              className="text-sm font-medium text-brand-800 hover:underline"
-            >
-              Add a new domain instead
-            </button>
-          </>
-        )}
-        {!domain && addingNew && (
-          <>
-            <p className="mb-8 text-sm text-zinc-500">
-              Use a subdomain (e.g. <code>mail.yourdomain.com</code>) to avoid
-              conflicts with any email you already have on the root domain.
-            </p>
-            <form onSubmit={handleCreate} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="domain" className="text-sm font-medium text-foreground">
-                  Domain
-                </label>
-                <input
-                  id="domain"
-                  type="text"
-                  placeholder="mail.yourdomain.com"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="rounded-xl border border-black/10 px-3 py-2 text-sm outline-none transition-colors focus:border-brand-400 dark:border-white/10"
-                />
-              </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <div className="flex items-center gap-4">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="self-start rounded-full bg-brand-800 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand-800/20 transition-colors hover:bg-brand-700 active:scale-[0.98] disabled:opacity-50"
-                >
-                  {loading ? "Creating..." : "Continue"}
-                </button>
-                {importable.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setAddingNew(false)}
-                    className="text-sm font-medium text-zinc-500 hover:underline"
-                  >
-                    Back to existing domains
-                  </button>
-                )}
-              </div>
-            </form>
-          </>
-        )}
-        {domain && (
-          <>
-            <p className="mb-6 text-sm text-zinc-500">
-              Add these records at your DNS provider, then verify.
-            </p>
-            <div className="mb-6 flex flex-col gap-3">
-              {domain.dnsRecords.map((record, i) => (
-                <DnsRecordCard key={i} record={record} />
-              ))}
-            </div>
-            {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
-            <button
-              type="button"
-              onClick={handleVerify}
-              disabled={loading}
-              className="flex items-center gap-2 rounded-full bg-brand-800 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-brand-800/20 transition-colors hover:bg-brand-700 active:scale-[0.98] disabled:opacity-50"
-            >
-              {domain.status === "verified" && <CheckCircle size={16} weight="fill" />}
-              {loading
-                ? "Checking..."
-                : domain.status === "verified"
-                  ? "Verified. Continue"
-                  : "Verify domain"}
-            </button>
-            {!loading && verifyAttempted && domain.status !== "verified" && (
-              <p className="mt-4 text-sm text-amber-600 dark:text-amber-400">
-                {STATUS_MESSAGES[domain.status] ?? STATUS_MESSAGES.pending}
-              </p>
-            )}
-          </>
-        )}
+    <AuthShell wide>
+      <OnboardingSteps current={2} />
+      <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-800 dark:bg-brand-500/10 dark:text-brand-300">
+        <Globe size={22} weight="bold" />
       </div>
-    </main>
+      <h1 className="mb-2 text-2xl font-semibold tracking-tight text-foreground">Connect your domain</h1>
+      {!domain && !addingNew && importable.length > 0 && (
+        <>
+          <p className="mb-6 text-sm text-text-secondary">
+            These domains are already on your Resend account. Pick one to
+            use it here, or add a new one.
+          </p>
+          {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+          <div className="mb-6 flex flex-col gap-2">
+            {importable.map((d) => (
+              <DrawablyButton
+                key={d.id}
+                type="button"
+                variant="outline"
+                tone="neutral"
+                roughness={0.3}
+                boil={0.1}
+                disabled={loading}
+                onClick={() => handleImport(d.id)}
+                className="w-full justify-between text-sm"
+              >
+                <span className="font-medium text-foreground">{d.name}</span>
+                <span className="text-xs text-text-secondary">{d.status}</span>
+              </DrawablyButton>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setAddingNew(true)}
+            className="text-sm font-medium text-brand-800 hover:underline dark:text-brand-300"
+          >
+            Add a new domain instead
+          </button>
+        </>
+      )}
+      {!domain && addingNew && (
+        <>
+          <p className="mb-8 text-sm text-text-secondary">
+            Use a subdomain (e.g. <code>mail.yourdomain.com</code>) to avoid
+            conflicts with any email you already have on the root domain.
+          </p>
+          <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="domain" className="text-sm font-medium text-foreground">
+                Domain
+              </label>
+              <Input
+                id="domain"
+                type="text"
+                placeholder="mail.yourdomain.com"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex items-center gap-4">
+              <Button type="submit" disabled={loading} className="self-start">
+                {loading ? "Creating..." : "Continue"}
+              </Button>
+              {importable.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setAddingNew(false)}
+                  className="text-sm font-medium text-text-secondary hover:underline"
+                >
+                  Back to existing domains
+                </button>
+              )}
+            </div>
+          </form>
+        </>
+      )}
+      {domain && (
+        <>
+          <p className="mb-6 text-sm text-text-secondary">
+            Add these records at your DNS provider, then verify.
+          </p>
+          <div className="mb-6 flex flex-col gap-3">
+            {domain.dnsRecords.map((record, i) => (
+              <DnsRecordCard key={i} record={record} />
+            ))}
+          </div>
+          {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+          <Button type="button" onClick={handleVerify} disabled={loading}>
+            {domain.status === "verified" && <CheckCircle size={16} weight="fill" />}
+            {loading
+              ? "Checking..."
+              : domain.status === "verified"
+                ? "Verified. Continue"
+                : "Verify domain"}
+          </Button>
+          {!loading && verifyAttempted && domain.status !== "verified" && (
+            <p className="mt-4 text-sm text-amber-600 dark:text-amber-400">
+              {STATUS_MESSAGES[domain.status] ?? STATUS_MESSAGES.pending}
+            </p>
+          )}
+        </>
+      )}
+    </AuthShell>
   );
 }

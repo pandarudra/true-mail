@@ -11,6 +11,8 @@ import {
   Star,
   TrashSimple,
 } from "@phosphor-icons/react";
+import { DrawablyButton, DrawablyDivider } from "drawably/react";
+import { IconButton } from "@/components/ui/IconButton";
 
 type Email = {
   id: string;
@@ -50,7 +52,7 @@ export function ReadingPane({
 
   if (!email) {
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-zinc-500">
+      <div className="flex flex-1 items-center justify-center text-sm text-text-secondary">
         Select a message
       </div>
     );
@@ -60,19 +62,14 @@ export function ReadingPane({
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
-      <div className="flex items-center gap-2 border-b border-black/4 px-4 py-3 dark:border-white/5">
-        <button
-          type="button"
-          aria-label="Back to list"
-          onClick={onBack}
-          className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-black/3 dark:hover:bg-white/5"
-        >
+      <div className="flex items-center gap-2 px-4 py-3">
+        <IconButton label="Back to list" onClick={onBack}>
           <ArrowLeft size={18} />
-        </button>
+        </IconButton>
         <div className="flex flex-1 justify-end gap-1">
           <ActionButton
             active={email.starred}
-            activeClass="bg-amber-50 text-amber-500 hover:bg-amber-100 dark:bg-amber-950/20"
+            activeStroke="#f59e0b"
             label={email.starred ? "Unstar" : "Star"}
             onClick={() => onToggleStar(email.id, !email.starred)}
           >
@@ -80,7 +77,7 @@ export function ReadingPane({
           </ActionButton>
           <ActionButton
             active={email.important}
-            activeClass="bg-brand-50 text-brand-800 hover:bg-brand-100 dark:bg-brand-800/20"
+            activeStroke="var(--color-brand-700)"
             label={email.important ? "Mark not important" : "Mark important"}
             onClick={() => onToggleImportant(email.id, !email.important)}
           >
@@ -106,9 +103,10 @@ export function ReadingPane({
           </ActionButton>
         </div>
       </div>
+      <DrawablyDivider roughness={0.3} boil={0.1} />
       <div className="flex-1 overflow-y-auto p-8">
         <h2 className="text-xl font-semibold text-foreground">{email.subject}</h2>
-        <p className="mt-1 mb-6 text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="mt-1 mb-6 text-sm text-text-secondary">
           From {email.from} to {email.to.join(", ")}
         </p>
         {safeHtml ? (
@@ -125,32 +123,31 @@ function ActionButton({
   onClick,
   label,
   active,
-  activeClass,
+  activeStroke,
   danger,
   children,
 }: {
   onClick: () => void;
   label: string;
   active?: boolean;
-  activeClass?: string;
+  activeStroke?: string;
   danger?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <button
+    <DrawablyButton
       type="button"
       aria-label={label}
       title={label}
       onClick={onClick}
-      className={`rounded-full p-2 transition-colors ${
-        active && activeClass
-          ? activeClass
-          : danger
-            ? "text-zinc-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
-            : "text-zinc-500 hover:bg-black/3 dark:hover:bg-white/5"
-      }`}
+      variant="outline"
+      tone={danger ? "danger" : active ? undefined : "neutral"}
+      stroke={active ? activeStroke : undefined}
+      roughness={0.3}
+      boil={0.1}
+      className="drawably-icon-btn flex h-8 w-8 items-center justify-center"
     >
       {children}
-    </button>
+    </DrawablyButton>
   );
 }

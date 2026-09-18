@@ -309,7 +309,7 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
   const activeEmail = emails.find((e) => e.id === activeEmailId) ?? null;
 
   return (
-    <div className="flex h-screen flex-col bg-brand-50/50 dark:bg-zinc-950">
+    <div className="flex h-screen flex-col bg-surface-subtle">
       <TopBar
         user={{
           name: session?.user.name ?? "",
@@ -318,7 +318,7 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
         query={query}
         onQueryChange={setQuery}
       />
-      <div className="flex flex-1 overflow-hidden bg-white dark:bg-zinc-900">
+      <div className="flex flex-1 overflow-hidden bg-surface">
         <Sidebar
           mailboxes={mailboxes}
           activeMailboxId={activeMailboxId}
