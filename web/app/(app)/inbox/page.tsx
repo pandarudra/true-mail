@@ -9,7 +9,7 @@ export default async function InboxPage() {
 
   return (
     <InboxClient
-      initialMailboxes={mailboxes.map((m) => ({ id: m.id, address: m.address }))}
+      initialMailboxes={mailboxes.map((m) => ({ id: m.id, address: m.address, isDefault: m.isDefault }))}
     />
   );
 }

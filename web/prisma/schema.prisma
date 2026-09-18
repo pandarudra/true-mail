@@ -23,6 +23,7 @@ model User {
   mailboxes        Mailbox[]
   sessions         Session[]
   accounts         Account[]
+  labels           Label[]
 
   @@map("user")
 }
@@ -64,6 +65,7 @@ model Mailbox {
   localPart   String
   address     String   @unique
   displayName String?
+  isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now())
   emails      Email[]
 }
@@ -90,6 +92,36 @@ model Email {
   sentAt        DateTime?
   receivedAt    DateTime?
   createdAt     DateTime  @default(now())
+  labels        Label[]
+  attachments   Attachment[]
+}
+
+model Attachment {
+  id          String  @id @default(uuid())
+  emailId     String
+  email       Email   @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  filename    String
+  contentType String
+  size        Int?
+  // Outbound (compose) attachments — hosted on Cloudinary.
+  cloudinaryUrl      String?
+  cloudinaryPublicId String?
+  // Inbound (received) attachments — content stays with Resend; a fresh
+  // signed download URL is fetched on demand via this id.
+  resendAttachmentId String?
+  createdAt   DateTime @default(now())
+}
+
+model Label {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String   @default("#6b7280")
+  createdAt DateTime @default(now())
+  emails    Email[]
+
+  @@unique([userId, name])
 }
 
 model Session {

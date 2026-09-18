@@ -119,3 +119,31 @@ body {
 .drawably-button.drawably-icon-btn {
   padding: 8px;
 }
+
+/* Thin, theme-matched scrollbars everywhere instead of the OS default.
+   scrollbar-color/-width are inherited (Firefox), so :root is enough there;
+   ::-webkit-scrollbar isn't inherited, so it needs the broad selector. */
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted);
+}

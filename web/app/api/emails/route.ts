@@ -5,6 +5,7 @@ import { getUserId } from "@/lib/session";
 import { getConnectionForUser } from "@/lib/resend-client";
 import { sendEmail } from "@/lib/resend";
 import { folderWhere, isFolderId } from "@/lib/mail-folders";
+import { attachmentsCreateData, parseAttachments } from "@/lib/attachments";
 
 const MUTABLE_FIELDS = ["read", "starred", "important", "archived", "spam"] as const;
 
@@ -17,6 +18,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const mailboxId = url.searchParams.get("mailboxId");
   const folder = url.searchParams.get("folder") ?? "inbox";
+  const labelId = url.searchParams.get("labelId");
   if (!mailboxId) {
     return NextResponse.json({ error: "mailboxId is required" }, { status: 400 });
   }
@@ -32,8 +34,13 @@ export async function GET(req: Request) {
   }
 
   const emails = await prisma.email.findMany({
-    where: { mailboxId, ...folderWhere(folder) },
+    where: {
+      mailboxId,
+      ...folderWhere(folder),
+      ...(labelId ? { labels: { some: { id: labelId } } } : {}),
+    },
     orderBy: { createdAt: "desc" },
+    include: { labels: true, attachments: true },
   });
 
   return NextResponse.json({ emails });
@@ -131,6 +138,7 @@ export async function POST(req: Request) {
   }
   const { resend } = connectionResult;
 
+  const attachments = parseAttachments(body?.attachments);
   const sendId = randomUUID();
   const sendResult = await sendEmail(
     resend,
@@ -141,6 +149,11 @@ export async function POST(req: Request) {
       subject,
       text,
       html,
+      attachments: attachments.map((a) => ({
+        path: a.url,
+        filename: a.filename,
+        contentType: a.contentType,
+      })),
     },
     { idempotencyKey: `send/${sendId}` }
   );
@@ -167,7 +180,9 @@ export async function POST(req: Request) {
       html,
       status: "sent",
       sentAt: new Date(),
+      attachments: { create: attachmentsCreateData(body?.attachments) },
     },
+    include: { attachments: true },
   });
 
   return NextResponse.json({ email });

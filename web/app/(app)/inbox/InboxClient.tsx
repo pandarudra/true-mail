@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { TopBar } from "@/components/TopBar";
 import { Sidebar } from "@/components/Sidebar";
@@ -8,11 +9,15 @@ import { InboxToolbar } from "@/components/InboxToolbar";
 import { MessageList } from "@/components/MessageList";
 import { ReadingPane } from "@/components/ReadingPane";
 import { matchesFolder, type FolderId } from "@/lib/mail-folders";
+import { readError } from "@/lib/api-error";
 
-type Mailbox = { id: string; address: string };
+type Mailbox = { id: string; address: string; isDefault: boolean };
+type Label = { id: string; name: string; color: string };
+type Attachment = { id: string; filename: string; contentType: string; size: number | null };
 type Email = {
   id: string;
   direction: string;
+  status: string;
   from: string;
   to: string[];
   subject: string;
@@ -25,6 +30,8 @@ type Email = {
   spam: boolean;
   trashedAt: string | null;
   createdAt: string;
+  labels: Label[];
+  attachments: Attachment[];
 };
 
 async function bulkUpdate(ids: string[], data: Record<string, boolean>) {
@@ -44,10 +51,15 @@ async function bulkDeleteForever(ids: string[]) {
 }
 
 export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] }) {
+  const router = useRouter();
   const { data: session } = authClient.useSession();
-  const [mailboxes] = useState<Mailbox[]>(initialMailboxes);
-  const [activeMailboxId, setActiveMailboxId] = useState<string>(initialMailboxes[0].id);
+  const [mailboxes, setMailboxes] = useState<Mailbox[]>(initialMailboxes);
+  const [activeMailboxId, setActiveMailboxId] = useState<string>(
+    initialMailboxes.find((m) => m.isDefault)?.id ?? initialMailboxes[0].id
+  );
   const [activeFolder, setActiveFolder] = useState<FolderId>("inbox");
+  const [activeLabelId, setActiveLabelId] = useState<string | null>(null);
+  const [labels, setLabels] = useState<Label[]>([]);
   const [emails, setEmails] = useState<Email[]>([]);
   const [activeEmailId, setActiveEmailId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -58,21 +70,39 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
   // accurate even while viewing a different folder.
   const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
 
+  function folderEmailsUrl() {
+    const labelParam = activeLabelId ? `&labelId=${activeLabelId}` : "";
+    return `/api/emails?mailboxId=${activeMailboxId}&folder=${activeFolder}${labelParam}`;
+  }
+
   async function fetchFolderEmails() {
-    const res = await fetch(`/api/emails?mailboxId=${activeMailboxId}&folder=${activeFolder}`);
+    const res = await fetch(folderEmailsUrl());
     const { emails: all } = await res.json();
     setEmails(all);
     setLastRefreshedAt(new Date());
   }
 
   useEffect(() => {
-    fetch(`/api/emails?mailboxId=${activeMailboxId}&folder=${activeFolder}`)
+    fetch(folderEmailsUrl())
       .then((res) => res.json())
       .then(({ emails: all }: { emails: Email[] }) => {
         setEmails(all);
         setLastRefreshedAt(new Date());
       });
-  }, [activeMailboxId, activeFolder]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMailboxId, activeFolder, activeLabelId]);
+
+  async function fetchLabels() {
+    const res = await fetch("/api/labels");
+    const { labels: all } = await res.json();
+    setLabels(all);
+  }
+
+  useEffect(() => {
+    fetch("/api/labels")
+      .then((res) => res.json())
+      .then(({ labels: all }: { labels: Label[] }) => setLabels(all));
+  }, []);
 
   async function refreshInboxUnreadCount() {
     const res = await fetch(`/api/emails?mailboxId=${activeMailboxId}&folder=inbox`);
@@ -97,7 +127,7 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
     }, 20_000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeMailboxId, activeFolder]);
+  }, [activeMailboxId, activeFolder, activeLabelId]);
 
   function resetSelection() {
     setSelectedIds(new Set());
@@ -106,6 +136,7 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
 
   function handleSelectMailbox(id: string) {
     setActiveMailboxId(id);
+    setActiveLabelId(null);
     resetSelection();
   }
 
@@ -114,9 +145,92 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
     resetSelection();
   }
 
+  function handleSelectLabel(id: string | null) {
+    setActiveLabelId((prev) => (prev === id ? null : id));
+    resetSelection();
+  }
+
+  async function handleCreateLabel(name: string, color: string) {
+    await fetch("/api/labels", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, color }),
+    });
+    void fetchLabels();
+  }
+
+  async function handleRenameLabel(id: string, name: string, color: string) {
+    await fetch(`/api/labels/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, color }),
+    });
+    await fetchLabels();
+    void fetchFolderEmails();
+  }
+
+  async function handleDeleteLabel(id: string) {
+    await fetch(`/api/labels/${id}`, { method: "DELETE" });
+    if (activeLabelId === id) setActiveLabelId(null);
+    await fetchLabels();
+    void fetchFolderEmails();
+  }
+
+  async function handleSetEmailLabels(id: string, labelIds: string[]) {
+    const res = await fetch(`/api/emails/${id}/labels`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ labelIds }),
+    });
+    const { email } = await res.json();
+    setEmails((prev) => prev.map((e) => (e.id === id ? { ...e, labels: email.labels } : e)));
+  }
+
+  async function handleCreateMailbox(domainId: string, localPart: string) {
+    const res = await fetch("/api/mailboxes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domainId, localPart }),
+    });
+    if (!res.ok) {
+      return { error: await readError(res) };
+    }
+    const { mailbox } = await res.json();
+    setMailboxes((prev) => [
+      ...prev,
+      { id: mailbox.id, address: mailbox.address, isDefault: mailbox.isDefault },
+    ]);
+    setActiveMailboxId(mailbox.id);
+    resetSelection();
+    return {};
+  }
+
+  async function handleSetPrimaryMailbox(id: string) {
+    await fetch(`/api/mailboxes/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isDefault: true }),
+    });
+    setMailboxes((prev) => prev.map((m) => ({ ...m, isDefault: m.id === id })));
+  }
+
+  async function handleDeleteMailbox(id: string) {
+    const res = await fetch(`/api/mailboxes/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      return { error: await readError(res) };
+    }
+    const next = mailboxes.filter((m) => m.id !== id);
+    setMailboxes(next);
+    if (activeMailboxId === id) {
+      setActiveMailboxId(next.find((m) => m.isDefault)?.id ?? next[0].id);
+      resetSelection();
+    }
+    return {};
+  }
+
   async function handleRefresh() {
     setRefreshing(true);
-    const res = await fetch(`/api/emails?mailboxId=${activeMailboxId}&folder=${activeFolder}`);
+    const res = await fetch(folderEmailsUrl());
     const { emails: all } = await res.json();
     setEmails(all);
     setLastRefreshedAt(new Date());
@@ -154,6 +268,10 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
   }
 
   async function handleSelectEmail(id: string) {
+    if (activeFolder === "drafts") {
+      router.push(`/compose?draft=${id}`);
+      return;
+    }
     setActiveEmailId(id);
     const email = emails.find((e) => e.id === id);
     if (email?.read) return;
@@ -326,6 +444,15 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
           unreadCount={inboxUnreadCount}
           onSelectMailbox={handleSelectMailbox}
           onSelectFolder={handleSelectFolder}
+          labels={labels}
+          activeLabelId={activeLabelId}
+          onSelectLabel={handleSelectLabel}
+          onCreateLabel={handleCreateLabel}
+          onRenameLabel={handleRenameLabel}
+          onDeleteLabel={handleDeleteLabel}
+          onCreateMailbox={handleCreateMailbox}
+          onSetPrimaryMailbox={handleSetPrimaryMailbox}
+          onDeleteMailbox={handleDeleteMailbox}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
           {activeEmail ? (
@@ -337,6 +464,8 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
               onArchive={handleArchive}
               onToggleSpam={handleToggleSpam}
               onDelete={handleDelete}
+              labels={labels}
+              onSetLabels={handleSetEmailLabels}
             />
           ) : (
             <>
@@ -358,6 +487,7 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
                 updatedAt={lastRefreshedAt}
               />
               <MessageList
+                key={`${activeMailboxId}-${activeFolder}`}
                 emails={filteredEmails}
                 activeEmailId={activeEmailId}
                 selectedIds={selectedIds}

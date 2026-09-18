@@ -44,8 +44,9 @@ export async function POST(req: Request) {
 
   const address = `${localPart}@${domain.name}`;
   try {
+    const isFirstMailbox = (await prisma.mailbox.count({ where: { userId } })) === 0;
     const mailbox = await prisma.mailbox.create({
-      data: { userId, domainId, localPart, address, displayName },
+      data: { userId, domainId, localPart, address, displayName, isDefault: isFirstMailbox },
     });
     return NextResponse.json({ mailbox });
   } catch (error) {

@@ -3,8 +3,9 @@ import type { Prisma } from "../generated/prisma/client";
 export const FOLDERS = [
   { id: "inbox", label: "Inbox" },
   { id: "starred", label: "Starred" },
-  { id: "important", label: "Important" },
   { id: "sent", label: "Sent" },
+  { id: "drafts", label: "Drafts" },
+  { id: "important", label: "Important" },
   { id: "archive", label: "Archive" },
   { id: "spam", label: "Spam" },
   { id: "trash", label: "Trash" },
@@ -19,6 +20,7 @@ export function isFolderId(value: string): value is FolderId {
 
 type FolderMatchable = {
   direction: string;
+  status: string;
   archived: boolean;
   spam: boolean;
   starred: boolean;
@@ -31,6 +33,7 @@ type FolderMatchable = {
 // waiting on a refetch.
 export function matchesFolder(email: FolderMatchable, folder: FolderId): boolean {
   const trashed = email.trashedAt !== null;
+  const isDraft = email.status === "draft";
   switch (folder) {
     case "inbox":
       return email.direction === "in" && !email.archived && !email.spam && !trashed;
@@ -39,7 +42,9 @@ export function matchesFolder(email: FolderMatchable, folder: FolderId): boolean
     case "important":
       return email.important && !email.spam && !trashed;
     case "sent":
-      return email.direction === "out" && !trashed;
+      return email.direction === "out" && !isDraft && !trashed;
+    case "drafts":
+      return email.direction === "out" && isDraft && !trashed;
     case "archive":
       return email.archived && !email.spam && !trashed;
     case "spam":
@@ -47,7 +52,7 @@ export function matchesFolder(email: FolderMatchable, folder: FolderId): boolean
     case "trash":
       return trashed;
     case "all":
-      return !email.spam && !trashed;
+      return !isDraft && !email.spam && !trashed;
   }
 }
 
@@ -60,7 +65,9 @@ export function folderWhere(folder: FolderId): Prisma.EmailWhereInput {
     case "important":
       return { important: true, spam: false, trashedAt: null };
     case "sent":
-      return { direction: "out", trashedAt: null };
+      return { direction: "out", status: { not: "draft" }, trashedAt: null };
+    case "drafts":
+      return { direction: "out", status: "draft", trashedAt: null };
     case "archive":
       return { archived: true, spam: false, trashedAt: null };
     case "spam":
@@ -68,6 +75,6 @@ export function folderWhere(folder: FolderId): Prisma.EmailWhereInput {
     case "trash":
       return { trashedAt: { not: null } };
     case "all":
-      return { spam: false, trashedAt: null };
+      return { status: { not: "draft" }, spam: false, trashedAt: null };
   }
 }

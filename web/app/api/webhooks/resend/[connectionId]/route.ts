@@ -69,6 +69,14 @@ export async function POST(
             html: email.html,
             status: "received",
             receivedAt: new Date(),
+            attachments: {
+              create: email.attachments.map((a) => ({
+                filename: a.filename ?? "attachment",
+                contentType: a.content_type,
+                size: a.size,
+                resendAttachmentId: a.id,
+              })),
+            },
           },
         });
       }

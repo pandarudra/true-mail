@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/session";
+import { attachmentsCreateData } from "@/lib/attachments";
 
 async function loadOwnedEmail(id: string, userId: string) {
   return prisma.email.findFirst({
@@ -46,6 +47,12 @@ export async function PATCH(
     archived?: boolean;
     spam?: boolean;
     trashedAt?: Date | null;
+    mailboxId?: string;
+    from?: string;
+    to?: string[];
+    cc?: string[];
+    subject?: string;
+    text?: string;
   } = {};
   if (typeof body?.read === "boolean") data.read = body.read;
   if (typeof body?.starred === "boolean") data.starred = body.starred;
@@ -54,7 +61,39 @@ export async function PATCH(
   if (typeof body?.spam === "boolean") data.spam = body.spam;
   if (typeof body?.trashed === "boolean") data.trashedAt = body.trashed ? new Date() : null;
 
-  const email = await prisma.email.update({ where: { id }, data });
+  // Content edits (to/cc/subject/text/mailbox/attachments) are autosave
+  // writes from the compose form — only ever valid while the email is still
+  // a draft, so a sent email's content can't be rewritten through this
+  // endpoint.
+  let replaceAttachments = false;
+  if (existing.status === "draft") {
+    if (Array.isArray(body?.to)) data.to = body.to;
+    if (Array.isArray(body?.cc)) data.cc = body.cc;
+    if (typeof body?.subject === "string") data.subject = body.subject;
+    if (typeof body?.text === "string") data.text = body.text;
+    if (Array.isArray(body?.attachments)) replaceAttachments = true;
+    if (typeof body?.mailboxId === "string") {
+      const mailbox = await prisma.mailbox.findFirst({
+        where: { id: body.mailboxId, userId },
+      });
+      if (!mailbox) {
+        return NextResponse.json({ error: "mailbox not found" }, { status: 404 });
+      }
+      data.mailboxId = mailbox.id;
+      data.from = mailbox.address;
+    }
+  }
+
+  const email = await prisma.email.update({
+    where: { id },
+    data: {
+      ...data,
+      ...(replaceAttachments && {
+        attachments: { deleteMany: {}, create: attachmentsCreateData(body.attachments) },
+      }),
+    },
+    include: { attachments: true },
+  });
   return NextResponse.json({ email });
 }
 
