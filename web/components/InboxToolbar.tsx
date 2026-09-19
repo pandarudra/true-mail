@@ -56,8 +56,8 @@ export function InboxToolbar() {
 
   return (
     <div>
-      <div className="flex items-center justify-between px-6 py-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 sm:px-6">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <h1 className="text-base font-semibold text-foreground">{label}</h1>
           <DrawablyBadge roughness={0.3} boil={0.1} className="tabular-nums">
             {totalCount}
@@ -133,7 +133,7 @@ export function InboxToolbar() {
 
         <div className="flex items-center gap-3">
           {updatedAt && (
-            <span className="font-mono text-xs text-text-muted">
+            <span className="hidden font-mono text-xs text-text-muted sm:inline">
               Updated {timeAgo(updatedAt, now)}
             </span>
           )}

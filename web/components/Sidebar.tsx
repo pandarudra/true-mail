@@ -56,51 +56,68 @@ const FOLDER_NAV: Array<{
   { id: "all", label: "All Mail", icon: Stack },
 ];
 
-export function Sidebar() {
+export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   const activeFolder = useInboxStore((s) => s.activeFolder);
   const unreadCount = useInboxStore((s) => s.inboxUnreadCount);
   const selectFolder = useInboxStore((s) => s.selectFolder);
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col overflow-y-auto border-r border-border p-4">
-      <DrawablyLinkButton href="/compose" className="mb-6 justify-center ">
-        <PencilSimpleLine size={18} weight="bold" />
-        Compose mail
-      </DrawablyLinkButton>
+    <>
+      {open && (
+        <button
+          type="button"
+          aria-label="Close menu"
+          onClick={onClose}
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 -translate-x-full flex-col overflow-y-auto border-r border-border bg-surface p-4 transition-transform duration-200 lg:static lg:z-auto lg:w-64 lg:translate-x-0 ${
+          open ? "translate-x-0" : ""
+        }`}
+      >
+        <DrawablyLinkButton href="/compose" className="mb-6 justify-center " onClick={onClose}>
+          <PencilSimpleLine size={18} weight="bold" />
+          Compose mail
+        </DrawablyLinkButton>
 
-      <nav className="flex flex-col gap-1">
-        {FOLDER_NAV.map(({ id, label, icon: Icon }) => {
-          const active = id === activeFolder;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => selectFolder(id)}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
-                active
-                  ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
-                  : "text-text-secondary hover:bg-surface-subtle"
-              }`}
-            >
-              <Icon size={18} weight={active ? "fill" : "regular"} />
-              <span className="flex-1">{label}</span>
-              {id === "inbox" && unreadCount > 0 && (
-                <DrawablyBadge roughness={0.3} boil={0.1} className="tabular-nums">
-                  {unreadCount}
-                </DrawablyBadge>
-              )}
-            </button>
-          );
-        })}
-      </nav>
+        <nav className="flex flex-col gap-1">
+          {FOLDER_NAV.map(({ id, label, icon: Icon }) => {
+            const active = id === activeFolder;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  selectFolder(id);
+                  onClose?.();
+                }}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+                    : "text-text-secondary hover:bg-surface-subtle"
+                }`}
+              >
+                <Icon size={18} weight={active ? "fill" : "regular"} />
+                <span className="flex-1">{label}</span>
+                {id === "inbox" && unreadCount > 0 && (
+                  <DrawablyBadge roughness={0.3} boil={0.1} className="tabular-nums">
+                    {unreadCount}
+                  </DrawablyBadge>
+                )}
+              </button>
+            );
+          })}
+        </nav>
 
-      <LabelsNav />
-      <MailboxesNav />
-    </aside>
+        <LabelsNav onNavigate={onClose} />
+        <MailboxesNav onNavigate={onClose} />
+      </aside>
+    </>
   );
 }
 
-function MailboxesNav() {
+function MailboxesNav({ onNavigate }: { onNavigate?: () => void }) {
   const mailboxes = useInboxStore((s) => s.mailboxes);
   const activeMailboxId = useInboxStore((s) => s.activeMailboxId);
   const selectMailbox = useInboxStore((s) => s.selectMailbox);
@@ -120,7 +137,10 @@ function MailboxesNav() {
           <div key={mailbox.id} className="group flex items-center gap-1">
             <button
               type="button"
-              onClick={() => selectMailbox(mailbox.id)}
+              onClick={() => {
+                selectMailbox(mailbox.id);
+                onNavigate?.();
+              }}
               className={`flex flex-1 items-center gap-2 truncate rounded-xl px-3 py-2 text-left text-sm transition-colors ${
                 mailbox.id === activeMailboxId
                   ? "bg-surface-subtle font-medium text-foreground"
@@ -272,7 +292,7 @@ function AddMailboxForm() {
   );
 }
 
-function LabelsNav() {
+function LabelsNav({ onNavigate }: { onNavigate?: () => void }) {
   const labels = useInboxStore((s) => s.labels);
   const activeLabelId = useInboxStore((s) => s.activeLabelId);
   const selectLabel = useInboxStore((s) => s.selectLabel);
@@ -294,7 +314,10 @@ function LabelsNav() {
           <div key={label.id} className="group flex items-center gap-1">
             <button
               type="button"
-              onClick={() => selectLabel(label.id)}
+              onClick={() => {
+                selectLabel(label.id);
+                onNavigate?.();
+              }}
               className={`flex flex-1 items-center gap-3 truncate rounded-xl px-3 py-2 text-left text-sm transition-colors ${
                 activeLabelId === label.id
                   ? "bg-surface-subtle font-medium text-foreground"

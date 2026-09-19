@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Gear, MagnifyingGlass, SignOut } from "@phosphor-icons/react";
+import { Gear, List, MagnifyingGlass, SignOut } from "@phosphor-icons/react";
 import { DrawablyCard, DrawablyCircle, DrawablyDivider } from "drawably/react";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -16,7 +16,7 @@ function initial(user: User): string {
   return (user.name || user.email).charAt(0).toUpperCase();
 }
 
-export function TopBar({ user }: { user: User }) {
+export function TopBar({ user, onMenuClick }: { user: User; onMenuClick?: () => void }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const query = useInboxStore((s) => s.query);
@@ -29,8 +29,16 @@ export function TopBar({ user }: { user: User }) {
 
   return (
     <div>
-      <div className="flex items-center gap-4 px-5 py-3">
-        <BrandMark />
+      <div className="flex items-center gap-2 px-3 py-3 sm:gap-4 sm:px-5">
+        <button
+          type="button"
+          aria-label="Open menu"
+          onClick={onMenuClick}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-subtle lg:hidden"
+        >
+          <List size={20} />
+        </button>
+        <BrandMark className="hidden sm:flex" />
         <div className="relative mx-auto w-full max-w-xl">
           <MagnifyingGlass
             size={16}

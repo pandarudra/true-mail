@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { TopBar } from "@/components/TopBar";
 import { Sidebar } from "@/components/Sidebar";
@@ -14,6 +14,7 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
   const activeEmail = useActiveEmail();
   const activeMailboxId = useInboxStore((s) => s.activeMailboxId);
   const activeFolder = useInboxStore((s) => s.activeFolder);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // One-time store hydration from server-provided props. Guarded by the
   // store's own `initialized` flag, and done synchronously during render
@@ -45,9 +46,10 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
           email: session?.user.email ?? "",
           image: session?.user.image,
         }}
+        onMenuClick={() => setSidebarOpen(true)}
       />
       <div className="flex flex-1 overflow-hidden bg-surface">
-        <Sidebar />
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex flex-1 flex-col overflow-hidden">
           {activeEmail ? (
             <ReadingPane email={activeEmail} />
