@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Archive,
   CaretLeft,
@@ -13,24 +14,9 @@ import {
 import { DrawablyDivider, DrawablyPager } from "drawably/react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { IconButton } from "@/components/ui/IconButton";
+import { useFilteredEmails, useInboxStore } from "@/lib/stores/inbox-store";
 
 const PAGE_SIZE = 25;
-
-type Label = { id: string; name: string; color: string };
-type Attachment = { id: string };
-
-type Email = {
-  id: string;
-  from: string;
-  subject: string;
-  text: string | null;
-  read: boolean;
-  starred: boolean;
-  important: boolean;
-  createdAt: string;
-  labels: Label[];
-  attachments: Attachment[];
-};
 
 function snippet(text: string | null): string {
   if (!text) return "";
@@ -47,28 +33,60 @@ function formatDate(iso: string): string {
     : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function MessageList({
-  emails,
-  activeEmailId,
-  selectedIds,
-  onSelectEmail,
-  onToggleSelect,
-  onToggleSelectAll,
-  onToggleStar,
-  onArchive,
-  onDelete,
-}: {
-  emails: Email[];
-  activeEmailId: string | null;
-  selectedIds: Set<string>;
-  onSelectEmail: (id: string) => void;
-  onToggleSelect: (id: string) => void;
-  onToggleSelectAll: () => void;
-  onToggleStar: (id: string, starred: boolean) => void;
-  onArchive: (id: string) => void;
-  onDelete: (id: string) => void;
-}) {
+function SkeletonRow() {
+  return (
+    <div className="flex items-start gap-3 px-4 py-3">
+      <div className="mt-1 h-4 w-4 shrink-0 animate-pulse rounded bg-surface-subtle" />
+      <div className="mt-1 h-4 w-4 shrink-0 animate-pulse rounded-full bg-surface-subtle" />
+      <div className="flex min-w-0 flex-1 flex-col gap-2 py-0.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="h-3 w-32 animate-pulse rounded bg-surface-subtle" />
+          <div className="h-3 w-10 animate-pulse rounded bg-surface-subtle" />
+        </div>
+        <div className="h-3 w-2/5 animate-pulse rounded bg-surface-subtle" />
+        <div className="h-3 w-4/5 animate-pulse rounded bg-surface-subtle" />
+      </div>
+    </div>
+  );
+}
+
+function MessageListSkeleton() {
+  return (
+    <div className="flex flex-1 flex-col overflow-hidden" aria-busy="true" aria-label="Loading messages">
+      <div className="flex items-center gap-3 px-4 py-2">
+        <div className="h-4 w-4 animate-pulse rounded bg-surface-subtle" />
+        <div className="h-3 w-16 animate-pulse rounded bg-surface-subtle" />
+      </div>
+      <DrawablyDivider roughness={0.3} boil={0.1} className="mx-4" />
+      {Array.from({ length: 8 }, (_, i) => (
+        <div key={i}>
+          <SkeletonRow />
+          {i < 7 && <DrawablyDivider roughness={0.3} boil={0.1} className="mx-4" />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function MessageList() {
+  const router = useRouter();
+  const emails = useFilteredEmails();
+  const loading = useInboxStore((s) => s.loading);
+  const activeFolder = useInboxStore((s) => s.activeFolder);
+  const activeEmailId = useInboxStore((s) => s.activeEmailId);
+  const selectedIds = useInboxStore((s) => s.selectedIds);
+  const selectEmail = useInboxStore((s) => s.selectEmail);
+  const toggleSelect = useInboxStore((s) => s.toggleSelect);
+  const toggleSelectAll = useInboxStore((s) => s.toggleSelectAll);
+  const toggleStar = useInboxStore((s) => s.toggleStar);
+  const archive = useInboxStore((s) => s.archive);
+  const deleteEmail = useInboxStore((s) => s.deleteEmail);
+
   const [page, setPage] = useState(0);
+
+  if (loading && emails.length === 0) {
+    return <MessageListSkeleton />;
+  }
 
   if (emails.length === 0) {
     return (
@@ -76,6 +94,14 @@ export function MessageList({
         No messages here
       </div>
     );
+  }
+
+  function handleRowClick(id: string) {
+    if (activeFolder === "drafts") {
+      router.push(`/compose?draft=${id}`);
+      return;
+    }
+    void selectEmail(id);
   }
 
   const allSelected = emails.length > 0 && selectedIds.size === emails.length;
@@ -87,7 +113,7 @@ export function MessageList({
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 flex-col overflow-y-auto">
         <div className="flex items-center gap-3 px-4 py-2">
-          <Checkbox aria-label="Select all messages" checked={allSelected} onChange={onToggleSelectAll} />
+          <Checkbox aria-label="Select all messages" checked={allSelected} onChange={toggleSelectAll} />
           <span className="text-xs font-medium uppercase tracking-wide text-text-secondary">
             {selectedIds.size > 0 ? `${selectedIds.size} selected` : "From"}
           </span>
@@ -104,7 +130,7 @@ export function MessageList({
               <Checkbox
                 aria-label={`Select message from ${email.from}`}
                 checked={selectedIds.has(email.id)}
-                onChange={() => onToggleSelect(email.id)}
+                onChange={() => toggleSelect(email.id)}
                 onClick={(e) => e.stopPropagation()}
                 className="mt-1"
               />
@@ -113,7 +139,7 @@ export function MessageList({
                 stroke={email.starred ? "#f59e0b" : undefined}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onToggleStar(email.id, !email.starred);
+                  toggleStar(email.id, !email.starred);
                 }}
                 className="mt-1 h-7 w-7 shrink-0"
               >
@@ -121,7 +147,7 @@ export function MessageList({
               </IconButton>
               <button
                 type="button"
-                onClick={() => onSelectEmail(email.id)}
+                onClick={() => handleRowClick(email.id)}
                 className="flex min-w-0 flex-1 flex-col gap-1 text-left"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -168,13 +194,13 @@ export function MessageList({
                 <span className="truncate text-xs text-text-secondary">{snippet(email.text)}</span>
               </button>
               <div className="mt-1 flex shrink-0 gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-                <IconButton label="Archive message" onClick={() => onArchive(email.id)} className="h-7 w-7">
+                <IconButton label="Archive message" onClick={() => archive(email.id)} className="h-7 w-7">
                   <Archive size={16} />
                 </IconButton>
                 <IconButton
                   label="Delete message"
                   tone="danger"
-                  onClick={() => onDelete(email.id)}
+                  onClick={() => deleteEmail(email.id)}
                   className="h-7 w-7"
                 >
                   <TrashSimple size={16} />

@@ -1,3 +1,5 @@
+<img src="web/public/icon.png" alt="TrueMail icon" width="72" height="72">
+
 # TrueMail
 
 Email infrastructure you actually own.
@@ -81,15 +83,15 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Run these from `web/`:
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start the dev server (Turbopack) |
-| `npm run build` | Production build |
-| `npm run start` | Start the production server |
-| `npm run lint` | ESLint |
-| `npm run test` | Run the Vitest suite |
-| `node scripts/register-resend-oauth-client.mjs <APP_URL>` | Register/update TrueMail's Resend OAuth client |
-| `node scripts/cleanup-orphaned-webhooks.mjs [--delete]` | Report (or remove) Resend webhooks that don't match a current connection |
+| Command                                                   | Description                                                              |
+| --------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `npm run dev`                                             | Start the dev server (Turbopack)                                         |
+| `npm run build`                                           | Production build                                                         |
+| `npm run start`                                           | Start the production server                                              |
+| `npm run lint`                                            | ESLint                                                                   |
+| `npm run test`                                            | Run the Vitest suite                                                     |
+| `node scripts/register-resend-oauth-client.mjs <APP_URL>` | Register/update TrueMail's Resend OAuth client                           |
+| `node scripts/cleanup-orphaned-webhooks.mjs [--delete]`   | Report (or remove) Resend webhooks that don't match a current connection |
 
 ### Project structure
 
@@ -103,6 +105,10 @@ web/
 ├─ prisma/          # Schema and migrations
 └─ scripts/         # One-off maintenance scripts
 ```
+
+## Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for deploying to Vercel.
 
 ## Contributing
 

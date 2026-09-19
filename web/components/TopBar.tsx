@@ -8,6 +8,7 @@ import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Input } from "@/components/ui/Input";
 import { authClient } from "@/lib/auth-client";
+import { useInboxStore } from "@/lib/stores/inbox-store";
 
 type User = { name: string; email: string; image?: string | null };
 
@@ -15,17 +16,11 @@ function initial(user: User): string {
   return (user.name || user.email).charAt(0).toUpperCase();
 }
 
-export function TopBar({
-  user,
-  query,
-  onQueryChange,
-}: {
-  user: User;
-  query: string;
-  onQueryChange: (value: string) => void;
-}) {
+export function TopBar({ user }: { user: User }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const query = useInboxStore((s) => s.query);
+  const setQuery = useInboxStore((s) => s.setQuery);
 
   async function handleSignOut() {
     await authClient.signOut();
@@ -44,7 +39,7 @@ export function TopBar({
           <Input
             type="search"
             value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="Search mail"
             className="pl-10"
           />

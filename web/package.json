@@ -24,7 +24,8 @@
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "resend": "^6.28.1"
+    "resend": "^6.28.1",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

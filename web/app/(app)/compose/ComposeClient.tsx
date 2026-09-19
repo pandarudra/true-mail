@@ -6,26 +6,14 @@ import { ArrowLeft, PaperPlaneTilt, Paperclip, X } from "@phosphor-icons/react";
 import { CldUploadWidget } from "next-cloudinary";
 import { DrawablyCard, DrawablyDivider, DrawablyTextarea } from "drawably/react";
 import { Button } from "@/components/ui/Button";
-import { readError } from "@/lib/api-error";
 import type { ReplyMode } from "@/lib/reply";
-
-type Mailbox = { id: string; address: string };
-type Prefill = { to: string[]; cc: string[]; subject: string; text: string; mode: ReplyMode };
-type ClientAttachment = {
-  publicId: string;
-  url: string;
-  filename: string;
-  contentType: string;
-  size: number;
-};
-type InitialDraft = {
-  id: string;
-  to: string[];
-  cc: string[];
-  subject: string;
-  text: string;
-  attachments: ClientAttachment[];
-};
+import {
+  useComposeStore,
+  type ClientAttachment,
+  type InitialDraft,
+  type Mailbox,
+  type Prefill,
+} from "@/lib/stores/compose-store";
 
 const HEADING: Record<ReplyMode, string> = {
   reply: "Reply",
@@ -54,14 +42,6 @@ function isUploadInfo(info: unknown): info is CloudinaryUploadInfo {
   );
 }
 
-function addressList(addrs: string[]): string {
-  return addrs.join(", ");
-}
-
-function parseAddresses(value: string): string[] {
-  return value.split(",").map((addr) => addr.trim()).filter(Boolean);
-}
-
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -69,31 +49,51 @@ function formatBytes(bytes: number): string {
 }
 
 export function ComposeClient({
+  sessionKey,
   mailboxes,
   initialMailboxId,
   prefill,
   initialDraft,
 }: {
+  sessionKey: string;
   mailboxes: Mailbox[];
   initialMailboxId?: string;
   prefill?: Prefill;
   initialDraft?: InitialDraft;
 }) {
   const router = useRouter();
-  const [mailboxId, setMailboxId] = useState(initialMailboxId ?? mailboxes[0]?.id ?? "");
-  const [to, setTo] = useState(addressList(initialDraft?.to ?? prefill?.to ?? []));
-  const [cc, setCc] = useState(addressList(initialDraft?.cc ?? prefill?.cc ?? []));
-  const [subject, setSubject] = useState(initialDraft?.subject ?? prefill?.subject ?? "");
-  const [text, setText] = useState(initialDraft?.text ?? prefill?.text ?? "");
-  const [attachments, setAttachments] = useState<ClientAttachment[]>(
-    initialDraft?.attachments ?? []
-  );
-  const [error, setError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
-  const [discarding, setDiscarding] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
-  const draftIdRef = useRef(initialDraft?.id ?? null);
+  // Reset the store for this specific compose session (new/reply/draft) —
+  // done synchronously during render, keyed off `sessionKey`, so switching
+  // from replying-to-A to replying-to-B never flashes A's content. Safe
+  // because ComposeClient only ever has one instance mounted at a time.
+  const [lastKey, setLastKey] = useState<string | null>(null);
+  if (lastKey !== sessionKey) {
+    useComposeStore
+      .getState()
+      .resetForSession(sessionKey, { mailboxes, initialMailboxId, prefill, initialDraft });
+    setLastKey(sessionKey);
+  }
+
+  const mailboxId = useComposeStore((s) => s.mailboxId);
+  const to = useComposeStore((s) => s.to);
+  const cc = useComposeStore((s) => s.cc);
+  const subject = useComposeStore((s) => s.subject);
+  const text = useComposeStore((s) => s.text);
+  const attachments = useComposeStore((s) => s.attachments);
+  const prefillMode = useComposeStore((s) => s.prefillMode);
+  const error = useComposeStore((s) => s.error);
+  const sending = useComposeStore((s) => s.sending);
+  const discarding = useComposeStore((s) => s.discarding);
+  const saveStatus = useComposeStore((s) => s.saveStatus);
+  const setMailboxId = useComposeStore((s) => s.setMailboxId);
+  const setTo = useComposeStore((s) => s.setTo);
+  const setCc = useComposeStore((s) => s.setCc);
+  const setSubject = useComposeStore((s) => s.setSubject);
+  const setText = useComposeStore((s) => s.setText);
+  const addAttachment = useComposeStore((s) => s.addAttachment);
+  const removeAttachment = useComposeStore((s) => s.removeAttachment);
+
   const skipNextAutosave = useRef(true);
 
   // Debounced autosave: 1.5s after the user stops typing, create the draft
@@ -109,72 +109,30 @@ export function ComposeClient({
     }
 
     const timer = setTimeout(async () => {
-      setSaveStatus("saving");
-      const payload = {
-        mailboxId,
-        to: parseAddresses(to),
-        cc: parseAddresses(cc),
-        subject,
-        text,
-        attachments,
-      };
-      if (draftIdRef.current) {
-        await fetch(`/api/emails/${draftIdRef.current}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        const res = await fetch("/api/drafts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (res.ok) {
-          const { email } = await res.json();
-          draftIdRef.current = email.id;
-          router.replace(`/compose?draft=${email.id}`, { scroll: false });
-        }
+      const newDraftId = await useComposeStore.getState().autosave();
+      if (newDraftId) {
+        router.replace(`/compose?draft=${newDraftId}`, { scroll: false });
       }
-      setSaveStatus("saved");
     }, AUTOSAVE_DELAY_MS);
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [to, cc, subject, text, mailboxId, attachments]);
 
+  // Session key changes (a fresh reply/draft/new compose) shouldn't
+  // immediately autosave either.
+  useEffect(() => {
+    skipNextAutosave.current = true;
+  }, [sessionKey]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setSending(true);
-    const res = await fetch("/api/emails", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mailboxId,
-        to: parseAddresses(to),
-        cc: parseAddresses(cc),
-        subject,
-        text,
-        attachments,
-      }),
-    });
-    setSending(false);
-    if (!res.ok) {
-      setError(await readError(res));
-      return;
-    }
-    if (draftIdRef.current) {
-      await fetch(`/api/emails/${draftIdRef.current}`, { method: "DELETE" });
-    }
-    router.push("/inbox");
+    const ok = await useComposeStore.getState().send();
+    if (ok) router.push("/inbox");
   }
 
   async function handleDiscard() {
-    setDiscarding(true);
-    if (draftIdRef.current) {
-      await fetch(`/api/emails/${draftIdRef.current}`, { method: "DELETE" });
-    }
+    await useComposeStore.getState().discard();
     router.push("/inbox");
   }
 
@@ -192,7 +150,7 @@ export function ComposeClient({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold text-foreground">
-              {prefill ? HEADING[prefill.mode] : "New message"}
+              {prefillMode ? HEADING[prefillMode] : "New message"}
             </h1>
             {saveStatus !== "idle" && (
               <span className="text-xs text-text-secondary">
@@ -269,7 +227,7 @@ export function ComposeClient({
           />
           {attachments.length > 0 && (
             <ul className="flex flex-col gap-1.5">
-              {attachments.map((a) => (
+              {attachments.map((a: ClientAttachment) => (
                 <li
                   key={a.publicId}
                   className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-1.5 text-sm"
@@ -281,9 +239,7 @@ export function ComposeClient({
                   <button
                     type="button"
                     aria-label={`Remove ${a.filename}`}
-                    onClick={() =>
-                      setAttachments((prev) => prev.filter((x) => x.publicId !== a.publicId))
-                    }
+                    onClick={() => removeAttachment(a.publicId)}
                     className="shrink-0 text-text-secondary hover:text-foreground"
                   >
                     <X size={14} />
@@ -298,16 +254,13 @@ export function ComposeClient({
             onSuccess={(result) => {
               if (!isUploadInfo(result?.info)) return;
               const info = result.info;
-              setAttachments((prev) => [
-                ...prev,
-                {
-                  publicId: info.public_id,
-                  url: info.secure_url,
-                  filename: info.original_filename ?? info.public_id,
-                  contentType: info.format ? `${info.resource_type}/${info.format}` : info.resource_type,
-                  size: info.bytes,
-                },
-              ]);
+              addAttachment({
+                publicId: info.public_id,
+                url: info.secure_url,
+                filename: info.original_filename ?? info.public_id,
+                contentType: info.format ? `${info.resource_type}/${info.format}` : info.resource_type,
+                size: info.bytes,
+              });
             }}
           >
             {({ open }) => (

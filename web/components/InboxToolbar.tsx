@@ -10,9 +10,10 @@ import {
   TrashSimple,
 } from "@phosphor-icons/react";
 import { DrawablyBadge, DrawablyDivider } from "drawably/react";
-import { FOLDERS, type FolderId } from "@/lib/mail-folders";
+import { FOLDERS } from "@/lib/mail-folders";
 import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/Button";
+import { useFilteredEmails, useFolderUnreadCount, useInboxStore } from "@/lib/stores/inbox-store";
 
 function timeAgo(date: Date, now: Date): string {
   const seconds = Math.max(
@@ -27,39 +28,23 @@ function timeAgo(date: Date, now: Date): string {
   return `${hours}h ago`;
 }
 
-export function InboxToolbar({
-  folder,
-  totalCount,
-  unreadCount,
-  selectedCount,
-  onRefresh,
-  onMarkAllRead,
-  onArchiveSelected,
-  onSpamSelected,
-  onNotSpamSelected,
-  onTrashSelected,
-  onRestoreSelected,
-  onDeleteForeverSelected,
-  onEmptyTrash,
-  refreshing,
-  updatedAt,
-}: {
-  folder: FolderId;
-  totalCount: number;
-  unreadCount: number;
-  selectedCount: number;
-  onRefresh: () => void;
-  onMarkAllRead: () => void;
-  onArchiveSelected: () => void;
-  onSpamSelected: () => void;
-  onNotSpamSelected: () => void;
-  onTrashSelected: () => void;
-  onRestoreSelected: () => void;
-  onDeleteForeverSelected: () => void;
-  onEmptyTrash: () => void;
-  refreshing: boolean;
-  updatedAt: Date | null;
-}) {
+export function InboxToolbar() {
+  const folder = useInboxStore((s) => s.activeFolder);
+  const totalCount = useFilteredEmails().length;
+  const unreadCount = useFolderUnreadCount();
+  const selectedCount = useInboxStore((s) => s.selectedIds.size);
+  const refreshing = useInboxStore((s) => s.refreshing);
+  const updatedAt = useInboxStore((s) => s.lastRefreshedAt);
+  const onRefresh = useInboxStore((s) => s.refresh);
+  const onMarkAllRead = useInboxStore((s) => s.markAllRead);
+  const onArchiveSelected = useInboxStore((s) => s.archiveSelected);
+  const onSpamSelected = useInboxStore((s) => s.spamSelected);
+  const onNotSpamSelected = useInboxStore((s) => s.notSpamSelected);
+  const onTrashSelected = useInboxStore((s) => s.trashSelected);
+  const onRestoreSelected = useInboxStore((s) => s.restoreSelected);
+  const onDeleteForeverSelected = useInboxStore((s) => s.deleteForeverSelected);
+  const onEmptyTrash = useInboxStore((s) => s.emptyTrash);
+
   const label = FOLDERS.find((f) => f.id === folder)?.label ?? "Inbox";
   const hasSelection = selectedCount > 0;
 

@@ -25,9 +25,8 @@ import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { Dialog } from "@/components/ui/Dialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useInboxStore } from "@/lib/stores/inbox-store";
 
-type Mailbox = { id: string; address: string; isDefault: boolean };
-type Label = { id: string; name: string; color: string };
 type Domain = { id: string; name: string; status: string };
 
 const LABEL_COLORS = [
@@ -57,39 +56,11 @@ const FOLDER_NAV: Array<{
   { id: "all", label: "All Mail", icon: Stack },
 ];
 
-export function Sidebar({
-  mailboxes,
-  activeMailboxId,
-  activeFolder,
-  unreadCount,
-  onSelectMailbox,
-  onSelectFolder,
-  labels,
-  activeLabelId,
-  onSelectLabel,
-  onCreateLabel,
-  onRenameLabel,
-  onDeleteLabel,
-  onCreateMailbox,
-  onSetPrimaryMailbox,
-  onDeleteMailbox,
-}: {
-  mailboxes: Mailbox[];
-  activeMailboxId: string | null;
-  activeFolder: FolderId;
-  unreadCount: number;
-  onSelectMailbox: (id: string) => void;
-  onSelectFolder: (folder: FolderId) => void;
-  labels: Label[];
-  activeLabelId: string | null;
-  onSelectLabel: (id: string | null) => void;
-  onCreateLabel: (name: string, color: string) => void;
-  onRenameLabel: (id: string, name: string, color: string) => void;
-  onDeleteLabel: (id: string) => void;
-  onCreateMailbox: (domainId: string, localPart: string) => Promise<{ error?: string }>;
-  onSetPrimaryMailbox: (id: string) => void;
-  onDeleteMailbox: (id: string) => Promise<{ error?: string }>;
-}) {
+export function Sidebar() {
+  const activeFolder = useInboxStore((s) => s.activeFolder);
+  const unreadCount = useInboxStore((s) => s.inboxUnreadCount);
+  const selectFolder = useInboxStore((s) => s.selectFolder);
+
   return (
     <aside className="flex w-64 shrink-0 flex-col overflow-y-auto border-r border-border p-4">
       <DrawablyLinkButton href="/compose" className="mb-6 justify-center ">
@@ -104,7 +75,7 @@ export function Sidebar({
             <button
               key={id}
               type="button"
-              onClick={() => onSelectFolder(id)}
+              onClick={() => selectFolder(id)}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
                 active
                   ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
@@ -123,42 +94,19 @@ export function Sidebar({
         })}
       </nav>
 
-      <LabelsNav
-        labels={labels}
-        activeLabelId={activeLabelId}
-        onSelectLabel={onSelectLabel}
-        onCreateLabel={onCreateLabel}
-        onRenameLabel={onRenameLabel}
-        onDeleteLabel={onDeleteLabel}
-      />
-
-      <MailboxesNav
-        mailboxes={mailboxes}
-        activeMailboxId={activeMailboxId}
-        onSelectMailbox={onSelectMailbox}
-        onSetPrimaryMailbox={onSetPrimaryMailbox}
-        onDeleteMailbox={onDeleteMailbox}
-        onCreateMailbox={onCreateMailbox}
-      />
+      <LabelsNav />
+      <MailboxesNav />
     </aside>
   );
 }
 
-function MailboxesNav({
-  mailboxes,
-  activeMailboxId,
-  onSelectMailbox,
-  onSetPrimaryMailbox,
-  onDeleteMailbox,
-  onCreateMailbox,
-}: {
-  mailboxes: Mailbox[];
-  activeMailboxId: string | null;
-  onSelectMailbox: (id: string) => void;
-  onSetPrimaryMailbox: (id: string) => void;
-  onDeleteMailbox: (id: string) => Promise<{ error?: string }>;
-  onCreateMailbox: (domainId: string, localPart: string) => Promise<{ error?: string }>;
-}) {
+function MailboxesNav() {
+  const mailboxes = useInboxStore((s) => s.mailboxes);
+  const activeMailboxId = useInboxStore((s) => s.activeMailboxId);
+  const selectMailbox = useInboxStore((s) => s.selectMailbox);
+  const setPrimaryMailbox = useInboxStore((s) => s.setPrimaryMailbox);
+  const deleteMailbox = useInboxStore((s) => s.deleteMailbox);
+
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const confirming = mailboxes.find((m) => m.id === confirmingId) ?? null;
 
@@ -172,7 +120,7 @@ function MailboxesNav({
           <div key={mailbox.id} className="group flex items-center gap-1">
             <button
               type="button"
-              onClick={() => onSelectMailbox(mailbox.id)}
+              onClick={() => selectMailbox(mailbox.id)}
               className={`flex flex-1 items-center gap-2 truncate rounded-xl px-3 py-2 text-left text-sm transition-colors ${
                 mailbox.id === activeMailboxId
                   ? "bg-surface-subtle font-medium text-foreground"
@@ -188,7 +136,7 @@ function MailboxesNav({
               {!mailbox.isDefault && (
                 <IconButton
                   label={`Set ${mailbox.address} as primary`}
-                  onClick={() => onSetPrimaryMailbox(mailbox.id)}
+                  onClick={() => setPrimaryMailbox(mailbox.id)}
                   className="h-6 w-6"
                 >
                   <Star size={12} />
@@ -208,7 +156,7 @@ function MailboxesNav({
           </div>
         ))}
       </nav>
-      <AddMailboxForm onCreateMailbox={onCreateMailbox} />
+      <AddMailboxForm />
       <ConfirmDialog
         open={confirming !== null}
         title="Delete mailbox"
@@ -220,7 +168,7 @@ function MailboxesNav({
         confirmLabel="Delete"
         onCancel={() => setConfirmingId(null)}
         onConfirm={async () => {
-          if (confirming) await onDeleteMailbox(confirming.id);
+          if (confirming) await deleteMailbox(confirming.id);
           setConfirmingId(null);
         }}
       />
@@ -228,11 +176,8 @@ function MailboxesNav({
   );
 }
 
-function AddMailboxForm({
-  onCreateMailbox,
-}: {
-  onCreateMailbox: (domainId: string, localPart: string) => Promise<{ error?: string }>;
-}) {
+function AddMailboxForm() {
+  const createMailbox = useInboxStore((s) => s.createMailbox);
   const [open, setOpen] = useState(false);
   const [domains, setDomains] = useState<Domain[] | null>(null);
   const [domainId, setDomainId] = useState("");
@@ -256,7 +201,7 @@ function AddMailboxForm({
     if (!domainId || !localPart.trim()) return;
     setError(null);
     setLoading(true);
-    const { error: err } = await onCreateMailbox(domainId, localPart.trim());
+    const { error: err } = await createMailbox(domainId, localPart.trim());
     setLoading(false);
     if (err) {
       setError(err);
@@ -327,21 +272,14 @@ function AddMailboxForm({
   );
 }
 
-function LabelsNav({
-  labels,
-  activeLabelId,
-  onSelectLabel,
-  onCreateLabel,
-  onRenameLabel,
-  onDeleteLabel,
-}: {
-  labels: Label[];
-  activeLabelId: string | null;
-  onSelectLabel: (id: string | null) => void;
-  onCreateLabel: (name: string, color: string) => void;
-  onRenameLabel: (id: string, name: string, color: string) => void;
-  onDeleteLabel: (id: string) => void;
-}) {
+function LabelsNav() {
+  const labels = useInboxStore((s) => s.labels);
+  const activeLabelId = useInboxStore((s) => s.activeLabelId);
+  const selectLabel = useInboxStore((s) => s.selectLabel);
+  const createLabel = useInboxStore((s) => s.createLabel);
+  const renameLabel = useInboxStore((s) => s.renameLabel);
+  const deleteLabel = useInboxStore((s) => s.deleteLabel);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const editing = labels.find((l) => l.id === editingId) ?? null;
@@ -356,7 +294,7 @@ function LabelsNav({
           <div key={label.id} className="group flex items-center gap-1">
             <button
               type="button"
-              onClick={() => onSelectLabel(label.id)}
+              onClick={() => selectLabel(label.id)}
               className={`flex flex-1 items-center gap-3 truncate rounded-xl px-3 py-2 text-left text-sm transition-colors ${
                 activeLabelId === label.id
                   ? "bg-surface-subtle font-medium text-foreground"
@@ -380,7 +318,7 @@ function LabelsNav({
               <IconButton
                 label={`Delete ${label.name}`}
                 tone="danger"
-                onClick={() => onDeleteLabel(label.id)}
+                onClick={() => deleteLabel(label.id)}
                 className="h-6 w-6"
               >
                 <X size={12} />
@@ -395,7 +333,7 @@ function LabelsNav({
             initialName={editing.name}
             initialColor={editing.color}
             onSubmit={(name, color) => {
-              onRenameLabel(editing.id, name, color);
+              renameLabel(editing.id, name, color);
               setEditingId(null);
             }}
             onCancel={() => setEditingId(null)}
@@ -413,7 +351,7 @@ function LabelsNav({
       <Dialog open={creating} onClose={() => setCreating(false)} title="Create label">
         <LabelForm
           onSubmit={(name, color) => {
-            onCreateLabel(name, color);
+            createLabel(name, color);
             setCreating(false);
           }}
           submitLabel="Create"

@@ -20,26 +20,7 @@ import {
 } from "@phosphor-icons/react";
 import { DrawablyBadge, DrawablyButton, DrawablyDivider } from "drawably/react";
 import { IconButton } from "@/components/ui/IconButton";
-
-type Label = { id: string; name: string; color: string };
-type Attachment = { id: string; filename: string; contentType: string; size: number | null };
-
-type Email = {
-  id: string;
-  from: string;
-  to: string[];
-  subject: string;
-  text: string | null;
-  html: string | null;
-  starred: boolean;
-  important: boolean;
-  archived: boolean;
-  spam: boolean;
-  trashedAt: string | null;
-  createdAt: string;
-  labels: Label[];
-  attachments: Attachment[];
-};
+import { useInboxStore, type Email, type Label } from "@/lib/stores/inbox-store";
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null) return "";
@@ -62,47 +43,28 @@ function formatFullDate(iso: string): string {
   });
 }
 
-export function ReadingPane({
-  email,
-  onBack,
-  onToggleStar,
-  onToggleImportant,
-  onArchive,
-  onToggleSpam,
-  onDelete,
-  labels,
-  onSetLabels,
-}: {
-  email: Email | null;
-  onBack: () => void;
-  onToggleStar: (id: string, starred: boolean) => void;
-  onToggleImportant: (id: string, important: boolean) => void;
-  onArchive: (id: string) => void;
-  onToggleSpam: (id: string, spam: boolean) => void;
-  onDelete: (id: string) => void;
-  labels: Label[];
-  onSetLabels: (id: string, labelIds: string[]) => void;
-}) {
+export function ReadingPane({ email }: { email: Email }) {
   const router = useRouter();
+  const labels = useInboxStore((s) => s.labels);
+  const closeReadingPane = useInboxStore((s) => s.closeReadingPane);
+  const toggleStar = useInboxStore((s) => s.toggleStar);
+  const toggleImportant = useInboxStore((s) => s.toggleImportant);
+  const archive = useInboxStore((s) => s.archive);
+  const toggleSpam = useInboxStore((s) => s.toggleSpam);
+  const deleteEmail = useInboxStore((s) => s.deleteEmail);
+  const setEmailLabels = useInboxStore((s) => s.setEmailLabels);
+
   const safeHtml = useMemo(
-    () => (email?.html ? DOMPurify.sanitize(email.html) : null),
+    () => (email.html ? DOMPurify.sanitize(email.html) : null),
     [email]
   );
-
-  if (!email) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-sm text-text-secondary">
-        Select a message
-      </div>
-    );
-  }
 
   const isTrashed = !!email.trashedAt;
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
       <div className="flex items-center gap-2 px-4 py-3">
-        <IconButton label="Back to list" onClick={onBack}>
+        <IconButton label="Back to list" onClick={closeReadingPane}>
           <ArrowLeft size={18} />
         </IconButton>
         {!isTrashed && (
@@ -132,7 +94,7 @@ export function ReadingPane({
             active={email.starred}
             activeStroke="#f59e0b"
             label={email.starred ? "Unstar" : "Star"}
-            onClick={() => onToggleStar(email.id, !email.starred)}
+            onClick={() => toggleStar(email.id, !email.starred)}
           >
             <Star size={16} weight={email.starred ? "fill" : "regular"} />
           </ActionButton>
@@ -140,25 +102,25 @@ export function ReadingPane({
             active={email.important}
             activeStroke="var(--color-brand-700)"
             label={email.important ? "Mark not important" : "Mark important"}
-            onClick={() => onToggleImportant(email.id, !email.important)}
+            onClick={() => toggleImportant(email.id, !email.important)}
           >
             <Flag size={16} weight={email.important ? "fill" : "regular"} />
           </ActionButton>
           {!isTrashed && !email.spam && (
-            <ActionButton label="Archive" onClick={() => onArchive(email.id)}>
+            <ActionButton label="Archive" onClick={() => archive(email.id)}>
               <Archive size={16} />
             </ActionButton>
           )}
-          <LabelPicker email={email} labels={labels} onSetLabels={onSetLabels} />
+          <LabelPicker email={email} labels={labels} onSetLabels={setEmailLabels} />
           <ActionButton
             label={email.spam ? "Not spam" : "Move to spam"}
-            onClick={() => onToggleSpam(email.id, !email.spam)}
+            onClick={() => toggleSpam(email.id, !email.spam)}
           >
             {email.spam ? <ArrowUUpLeft size={16} /> : <ShieldWarning size={16} />}
           </ActionButton>
           <ActionButton
             label={isTrashed ? "Delete forever" : "Delete"}
-            onClick={() => onDelete(email.id)}
+            onClick={() => deleteEmail(email.id)}
             danger
           >
             <TrashSimple size={16} />

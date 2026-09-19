@@ -70,8 +70,13 @@ export default async function ComposePage({
 
   initialMailboxId ??= mailboxes.find((m) => m.isDefault)?.id;
 
+  // Identifies this specific compose session, so the store knows when to
+  // reset instead of carrying over a previous session's text/attachments.
+  const sessionKey = draft ?? (replyTo ? `${replyTo}-${mode}` : "new");
+
   return (
     <ComposeClient
+      sessionKey={sessionKey}
       mailboxes={mailboxes.map((m) => ({ id: m.id, address: m.address }))}
       initialMailboxId={initialMailboxId}
       prefill={prefill}
