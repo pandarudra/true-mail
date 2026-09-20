@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
 import {
@@ -13,6 +13,7 @@ import {
   CaretDown,
   CaretLeft,
   CaretRight,
+  CheckSquare,
   DownloadSimple,
   Flag,
   Paperclip,
@@ -26,6 +27,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/Button";
 import { SummaryCard } from "@/components/ai/SummaryCard";
 import { AiReplyBar } from "@/components/ai/AiReplyBar";
+import { AddToTaskDialog } from "@/components/tasks/AddToTaskDialog";
 import { FOLDERS } from "@/lib/mail-folders";
 import { useFilteredEmails, useInboxStore, type Email, type Label } from "@/lib/stores/inbox-store";
 
@@ -52,6 +54,7 @@ function formatFullDate(iso: string): string {
 
 export function ReadingPane({ email }: { email: Email }) {
   const router = useRouter();
+  const [addingTask, setAddingTask] = useState(false);
   const labels = useInboxStore((s) => s.labels);
   const activeFolder = useInboxStore((s) => s.activeFolder);
   const closeReadingPane = useInboxStore((s) => s.closeReadingPane);
@@ -104,6 +107,9 @@ export function ReadingPane({ email }: { email: Email }) {
               <Archive size={16} />
             </ActionButton>
           )}
+          <ActionButton label="Add to Tasks" onClick={() => setAddingTask(true)}>
+            <CheckSquare size={16} />
+          </ActionButton>
           <LabelPicker email={email} labels={labels} onSetLabels={setEmailLabels} />
           <ActionButton
             label={email.spam ? "Not spam" : "Move to spam"}
@@ -251,6 +257,12 @@ export function ReadingPane({ email }: { email: Email }) {
           </div>
         )}
       </div>
+      <AddToTaskDialog
+        open={addingTask}
+        onClose={() => setAddingTask(false)}
+        emailId={email.id}
+        defaultTitle={email.subject}
+      />
     </div>
   );
 }
