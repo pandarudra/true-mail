@@ -113,9 +113,13 @@ owned, matching every other route in `app/api/`.
 Icons throughout are Phosphor (`@phosphor-icons/react`), matching every
 existing icon in the app — no emoji glyphs anywhere in the UI, including
 in prompts' example output shown to the model (the model's own JSON
-fields are plain text/strings, not emoji-decorated).
+fields are plain text/strings, not emoji-decorated). The "this is an AI
+feature" marker is Phosphor's `Robot` icon (a small robot head/face glyph,
+in the same family as GitHub Copilot's mark) used consistently for
+Summarize, the reply bar's trigger, and the Ask Inbox toggle — not a
+generic sparkle.
 
-- **`components/ai/SummaryCard.tsx`** — a `Sparkle`-icon "Summarize"
+- **`components/ai/SummaryCard.tsx`** — a `Robot`-icon "Summarize"
   button (styled like other `IconButton`/`Button` usages) inside
   `ReadingPane`, above the email body. Click → loading state → renders
   `summary` as a short paragraph, `bullets` as a plain list, and `action`
@@ -140,7 +144,7 @@ fields are plain text/strings, not emoji-decorated).
   existing quoted-original text that `resetForSession` already populated.
   No change to the compose page's server contract, no URL length concerns
   from passing generated text as a query param.
-- **`components/ai/AskInbox.tsx`** — a `Sparkle` icon button inside
+- **`components/ai/AskInbox.tsx`** — a `Robot` icon button inside
   `TopBar`'s existing search box (next to the `MagnifyingGlass` icon)
   toggles the input into "ask" mode (placeholder changes to "Ask your
   inbox..."). Enter submits the question; a panel renders below the bar
@@ -148,7 +152,7 @@ fields are plain text/strings, not emoji-decorated).
   (`from` + `subject`, styled like existing `DrawablyBadge` chips
   elsewhere in the app). Clicking a chip calls the inbox store's existing
   `selectEmail(id)` — same action a normal message-list row click uses —
-  to open it in the Reading Pane. A second click on the `Sparkle` toggle
+  to open it in the Reading Pane. A second click on the `Robot` toggle
   reverts to normal live search.
 
 ## 4. Error handling
