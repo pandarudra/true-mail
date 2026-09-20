@@ -31,6 +31,10 @@
     {
       "name": "Webhooks",
       "description": "Inbound webhook from Resend — called by Resend, not by the app's own clients"
+    },
+    {
+      "name": "AI",
+      "description": "NVIDIA-backed summarize/reply/ask features — every call is user-triggered, nothing runs in the background"
     }
   ],
   "components": {
@@ -1291,6 +1295,136 @@
               }
             }
           }
+        }
+      }
+    },
+    "/api/ai/summarize": {
+      "post": {
+        "tags": ["AI"],
+        "summary": "Summarize a single email",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["emailId"],
+                "properties": { "emailId": { "type": "string", "format": "uuid" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "summary": { "type": "string" },
+                    "bullets": { "type": "array", "items": { "type": "string" } },
+                    "action": { "type": "string", "nullable": true }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "emailId is required", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "502": { "description": "AI is temporarily unavailable", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/ai/reply": {
+      "post": {
+        "tags": ["AI"],
+        "summary": "Draft a reply to an email for a given intent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["emailId", "intent"],
+                "properties": {
+                  "emailId": { "type": "string", "format": "uuid" },
+                  "intent": {
+                    "type": "string",
+                    "enum": ["accept", "decline", "ask_details", "thank", "follow_up", "custom"]
+                  },
+                  "customInstruction": { "type": "string", "description": "Required when intent is \"custom\"" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "text": { "type": "string" } } }
+              }
+            }
+          },
+          "400": { "description": "emailId and a valid intent are required (or customInstruction missing for a custom intent)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "502": { "description": "AI is temporarily unavailable", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/ai/ask": {
+      "post": {
+        "tags": ["AI"],
+        "summary": "Ask a natural-language question over a mailbox's recent mail",
+        "description": "Answers using up to the 60 most-recent non-trashed, non-spam emails in the mailbox as context (no embeddings/vector search). Citations are always filtered server-side to emails that were actually in that context set.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["mailboxId", "question"],
+                "properties": {
+                  "mailboxId": { "type": "string", "format": "uuid" },
+                  "question": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "answer": { "type": "string" },
+                    "cited": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "from": { "type": "string" },
+                          "subject": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "mailboxId and question are required", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "description": "Mailbox not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "502": { "description": "AI is temporarily unavailable", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     }

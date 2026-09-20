@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Gear, List, MagnifyingGlass, SignOut } from "@phosphor-icons/react";
+import { FunnelSimple, Gear, List, SignOut } from "@phosphor-icons/react";
 import { DrawablyCard, DrawablyCircle, DrawablyDivider } from "drawably/react";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Input } from "@/components/ui/Input";
+import { AskInbox } from "@/components/ai/AskInbox";
+import { AdvancedSearchModal } from "@/components/AdvancedSearchModal";
+import { IconButton } from "@/components/ui/IconButton";
 import { authClient } from "@/lib/auth-client";
-import { useInboxStore } from "@/lib/stores/inbox-store";
 
 type User = { name: string; email: string; image?: string | null };
 
@@ -16,11 +17,16 @@ function initial(user: User): string {
   return (user.name || user.email).charAt(0).toUpperCase();
 }
 
-export function TopBar({ user, onMenuClick }: { user: User; onMenuClick?: () => void }) {
+export function TopBar({
+  user,
+  onMenuClick,
+}: {
+  user: User;
+  onMenuClick?: () => void;
+}) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const query = useInboxStore((s) => s.query);
-  const setQuery = useInboxStore((s) => s.setQuery);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
 
   async function handleSignOut() {
     await authClient.signOut();
@@ -39,19 +45,17 @@ export function TopBar({ user, onMenuClick }: { user: User; onMenuClick?: () => 
           <List size={20} />
         </button>
         <BrandMark className="hidden sm:flex" />
-        <div className="relative mx-auto w-full max-w-xl">
-          <MagnifyingGlass
-            size={16}
-            className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-text-muted"
-          />
-          <Input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search mail"
-            className="pl-10"
-          />
-        </div>
+        <AskInbox />
+        <IconButton
+          label="Search options"
+          onClick={() => setSearchModalOpen(true)}
+        >
+          <FunnelSimple size={16} />
+        </IconButton>
+        <AdvancedSearchModal
+          open={searchModalOpen}
+          onClose={() => setSearchModalOpen(false)}
+        />
         <ThemeToggle />
         <div className="relative shrink-0">
           <button

@@ -1,5 +1,7 @@
 import { create } from "zustand";
+import { useShallow } from "zustand/react/shallow";
 import { matchesFolder, type FolderId } from "@/lib/mail-folders";
+import { matchesSearchQuery } from "@/lib/search-query";
 import { readError } from "@/lib/api-error";
 
 export type Mailbox = { id: string; address: string; isDefault: boolean };
@@ -41,7 +43,7 @@ async function bulkDeleteForever(ids: string[]) {
   });
 }
 
-type InboxState = {
+export type InboxState = {
   initialized: boolean;
   mailboxes: Mailbox[];
   activeMailboxId: string;
@@ -99,15 +101,10 @@ function folderEmailsUrl(state: InboxState) {
   return `/api/emails?mailboxId=${state.activeMailboxId}&folder=${state.activeFolder}${labelParam}`;
 }
 
-function filteredEmails(state: InboxState): Email[] {
-  const q = state.query.trim().toLowerCase();
+export function filteredEmails(state: InboxState): Email[] {
+  const q = state.query.trim();
   if (!q) return state.emails;
-  return state.emails.filter(
-    (e) =>
-      e.from.toLowerCase().includes(q) ||
-      e.subject.toLowerCase().includes(q) ||
-      e.text?.toLowerCase().includes(q)
-  );
+  return state.emails.filter((e) => matchesSearchQuery(e, q));
 }
 
 export const useInboxStore = create<InboxState>((set, get) => ({
@@ -469,7 +466,7 @@ function applyLocal(
 
 // Selector hooks for derived values — kept out of state itself.
 export function useFilteredEmails(): Email[] {
-  return useInboxStore(filteredEmails);
+  return useInboxStore(useShallow(filteredEmails));
 }
 
 export function useFolderUnreadCount(): number {

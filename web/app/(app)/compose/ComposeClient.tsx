@@ -72,6 +72,21 @@ export function ComposeClient({
     useComposeStore
       .getState()
       .resetForSession(sessionKey, { mailboxes, initialMailboxId, prefill, initialDraft });
+
+    // AI Reply hands off its generated draft via sessionStorage (set right
+    // before navigating here) instead of a URL param, since a draft can be
+    // arbitrarily long. Prepend it above the quoted-original text that
+    // resetForSession just populated. Guarded for SSR — this component's
+    // first render pass happens on the server, where sessionStorage doesn't
+    // exist.
+    if (typeof window !== "undefined") {
+      const aiDraft = sessionStorage.getItem("truemail:ai-draft");
+      if (aiDraft) {
+        sessionStorage.removeItem("truemail:ai-draft");
+        useComposeStore.getState().setText(`${aiDraft}\n\n${useComposeStore.getState().text}`);
+      }
+    }
+
     setLastKey(sessionKey);
   }
 

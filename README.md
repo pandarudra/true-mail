@@ -17,6 +17,7 @@ TrueMail is a self-hosted-friendly email client that runs on **your own domain**
 - **Attachments** — uploaded via Cloudinary for outgoing mail; incoming attachments are fetched from Resend on demand (no duplicate storage)
 - **Dark mode**, a hand-drawn UI (via [Drawably](https://www.npmjs.com/package/drawably)), and a profile with a custom avatar
 - **Responsive** — the inbox, compose, settings, and landing page all adapt down to phone-sized screens
+- **AI assist** (optional, needs `NVIDIA_API_KEY`) — summarize an open email, draft a reply by intent (accept/decline/ask for details/thank/follow up/custom), or ask your inbox a question and jump straight to the cited emails. Every call is user-triggered, nothing runs in the background
 
 ## Tech stack
 
@@ -62,6 +63,7 @@ Fill in `.env`:
 - `RESEND_OAUTH_CLIENT_ID` / `RESEND_OAUTH_CLIENT_SECRET` — TrueMail's own OAuth client for the "Connect with Resend" button (see below)
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — optional, for Google sign-in
 - `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` / `NEXT_PUBLIC_CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` — optional, for attachments
+- `NVIDIA_API_KEY` — optional, for AI features (a free-tier key from [build.nvidia.com](https://build.nvidia.com))
 
 Register your own Resend OAuth client (one-time, re-run whenever `APP_URL` changes):
 
