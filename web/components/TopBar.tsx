@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { FunnelSimple, Gear, List, SignOut } from "@phosphor-icons/react";
 import { DrawablyCard, DrawablyCircle, DrawablyDivider } from "drawably/react";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AskInbox } from "@/components/ai/AskInbox";
 import { AdvancedSearchModal } from "@/components/AdvancedSearchModal";
+import { TaskSearchBar } from "@/components/tasks/TaskSearchBar";
+import { AdvancedTaskSearchModal } from "@/components/tasks/AdvancedTaskSearchModal";
 import { IconButton } from "@/components/ui/IconButton";
 import { authClient } from "@/lib/auth-client";
 
@@ -25,6 +27,8 @@ export function TopBar({
   onMenuClick?: () => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const onTasks = pathname === "/tasks";
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
 
@@ -45,17 +49,24 @@ export function TopBar({
           <List size={20} />
         </button>
         <BrandMark className="hidden sm:flex" />
-        <AskInbox />
+        {onTasks ? <TaskSearchBar /> : <AskInbox />}
         <IconButton
           label="Search options"
           onClick={() => setSearchModalOpen(true)}
         >
           <FunnelSimple size={16} />
         </IconButton>
-        <AdvancedSearchModal
-          open={searchModalOpen}
-          onClose={() => setSearchModalOpen(false)}
-        />
+        {onTasks ? (
+          <AdvancedTaskSearchModal
+            open={searchModalOpen}
+            onClose={() => setSearchModalOpen(false)}
+          />
+        ) : (
+          <AdvancedSearchModal
+            open={searchModalOpen}
+            onClose={() => setSearchModalOpen(false)}
+          />
+        )}
         <ThemeToggle />
         <div className="relative shrink-0">
           <button

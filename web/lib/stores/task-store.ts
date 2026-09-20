@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import { readError } from "@/lib/api-error";
+import { matchesTaskSearchQuery } from "@/lib/task-search-query";
 
 export type Priority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
 export type TaskList = { id: string; name: string; color: string; isDefault: boolean };
@@ -29,8 +30,10 @@ export type TaskState = {
   tasks: Task[];
   activeView: TaskView;
   loading: boolean;
+  query: string;
 
   init: () => void;
+  setQuery: (value: string) => void;
   fetchTaskLists: () => Promise<void>;
   fetchTasks: () => Promise<void>;
   selectSmartView: (view: SmartView) => void;
@@ -72,12 +75,17 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   activeView: { kind: "smart", smart: "today" },
   loading: true,
+  query: "",
 
   init() {
     if (get().initialized) return;
     set({ initialized: true });
     void get().fetchTaskLists();
     void get().fetchTasks();
+  },
+
+  setQuery(value) {
+    set({ query: value });
   },
 
   async fetchTaskLists() {
@@ -258,11 +266,7 @@ function byDueDate(a: Task, b: Task): number {
   return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
 }
 
-// Pure selector — unit-tested directly with a fixed `now` for determinism.
-export function filteredTasks(
-  state: Pick<TaskState, "tasks" | "activeView">,
-  now: Date = new Date()
-): Task[] {
+function viewFilteredTasks(state: Pick<TaskState, "tasks" | "activeView">, now: Date): Task[] {
   const view = state.activeView;
   if (view.kind === "list") {
     return state.tasks.filter((t) => t.listId === view.listId).sort((a, b) => a.position - b.position);
@@ -287,6 +291,20 @@ export function filteredTasks(
     case "all":
       return state.tasks.filter((t) => !t.completed).sort(byDueDate);
   }
+}
+
+// Pure selector — unit-tested directly with a fixed `now` for determinism.
+// Search (via the TopBar search box / AdvancedTaskSearchModal) layers on
+// top of the active view, the same way inbox-store's query layers on top
+// of the active folder.
+export function filteredTasks(
+  state: Pick<TaskState, "tasks" | "activeView" | "query" | "taskLists">,
+  now: Date = new Date()
+): Task[] {
+  const viewFiltered = viewFilteredTasks(state, now);
+  const q = state.query.trim();
+  if (!q) return viewFiltered;
+  return viewFiltered.filter((t) => matchesTaskSearchQuery(t, q, state.taskLists));
 }
 
 export function useFilteredTasks(): Task[] {

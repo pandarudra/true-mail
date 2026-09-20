@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { filteredTasks, reorderList, useTaskStore, type Task } from "./task-store";
+import { filteredTasks, reorderList, useTaskStore, type Task, type TaskList, type TaskView } from "./task-store";
 
 function task(overrides: Partial<Task> = {}): Task {
   return {
@@ -20,6 +20,10 @@ function task(overrides: Partial<Task> = {}): Task {
   };
 }
 
+function viewState(tasks: Task[], activeView: TaskView, opts: { query?: string; taskLists?: TaskList[] } = {}) {
+  return { tasks, activeView, query: opts.query ?? "", taskLists: opts.taskLists ?? [] };
+}
+
 // Built from local-midnight boundaries (matching filteredTasks' own logic)
 // rather than fixed UTC strings, so these fixtures aren't timezone-flaky.
 const NOW = new Date("2026-09-21T12:00:00Z");
@@ -36,7 +40,7 @@ describe("filteredTasks", () => {
       task({ id: "4", dueAt: hoursFrom(startOfToday, -24), completed: true }), // completed, excluded
       task({ id: "5", dueAt: null }), // no due date, excluded from Today
     ];
-    const result = filteredTasks({ tasks, activeView: { kind: "smart", smart: "today" } }, NOW);
+    const result = filteredTasks(viewState(tasks, { kind: "smart", smart: "today" }), NOW);
     expect(result.map((t) => t.id)).toEqual(["1", "2"]);
   });
 
@@ -46,7 +50,7 @@ describe("filteredTasks", () => {
       task({ id: "2", dueAt: hoursFrom(startOfTomorrow, 6) }),
       task({ id: "3", dueAt: hoursFrom(startOfTomorrow, 30), completed: true }),
     ];
-    const result = filteredTasks({ tasks, activeView: { kind: "smart", smart: "upcoming" } }, NOW);
+    const result = filteredTasks(viewState(tasks, { kind: "smart", smart: "upcoming" }), NOW);
     expect(result.map((t) => t.id)).toEqual(["2"]);
   });
 
@@ -55,13 +59,13 @@ describe("filteredTasks", () => {
       task({ id: "1", dueAt: hoursFrom(startOfToday, -0.5) }),
       task({ id: "2", dueAt: hoursFrom(startOfToday, 0) }),
     ];
-    const result = filteredTasks({ tasks, activeView: { kind: "smart", smart: "overdue" } }, NOW);
+    const result = filteredTasks(viewState(tasks, { kind: "smart", smart: "overdue" }), NOW);
     expect(result.map((t) => t.id)).toEqual(["1"]);
   });
 
   it("completed returns only completed tasks", () => {
     const tasks = [task({ id: "1", completed: true }), task({ id: "2", completed: false })];
-    const result = filteredTasks({ tasks, activeView: { kind: "smart", smart: "completed" } }, NOW);
+    const result = filteredTasks(viewState(tasks, { kind: "smart", smart: "completed" }), NOW);
     expect(result.map((t) => t.id)).toEqual(["1"]);
   });
 
@@ -71,8 +75,35 @@ describe("filteredTasks", () => {
       task({ id: "2", listId: "b", position: 0 }),
       task({ id: "3", listId: "a", position: 0 }),
     ];
-    const result = filteredTasks({ tasks, activeView: { kind: "list", listId: "a" } }, NOW);
+    const result = filteredTasks(viewState(tasks, { kind: "list", listId: "a" }), NOW);
     expect(result.map((t) => t.id)).toEqual(["3", "1"]);
+  });
+
+  it("a search query layers on top of the active view, matching title/description", () => {
+    const tasks = [
+      task({ id: "1", title: "Ship the release", completed: false }),
+      task({ id: "2", title: "Write docs", description: "release notes", completed: false }),
+      task({ id: "3", title: "Ship the release", completed: true }),
+    ];
+    const result = filteredTasks(viewState(tasks, { kind: "smart", smart: "all" }, { query: "release" }), NOW);
+    expect(result.map((t) => t.id)).toEqual(["1", "2"]);
+  });
+
+  it("a search query supports list:/priority:/status: operators", () => {
+    const taskLists: TaskList[] = [
+      { id: "a", name: "Work", color: "#000", isDefault: false },
+      { id: "b", name: "Personal", color: "#000", isDefault: false },
+    ];
+    const tasks = [
+      task({ id: "1", listId: "a", priority: "URGENT", completed: false }),
+      task({ id: "2", listId: "a", priority: "LOW", completed: false }),
+      task({ id: "3", listId: "b", priority: "URGENT", completed: false }),
+    ];
+    const result = filteredTasks(
+      viewState(tasks, { kind: "smart", smart: "all" }, { query: "list:work priority:urgent", taskLists }),
+      NOW
+    );
+    expect(result.map((t) => t.id)).toEqual(["1"]);
   });
 });
 
