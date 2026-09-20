@@ -107,7 +107,7 @@ web/
 
 ## API documentation
 
-The REST API is documented as an OpenAPI 3.0 spec at [`web/public/openapi.json`](web/public/openapi.json), served statically at `/openapi.json`. Browse it with Swagger UI at `/api-docs` (e.g. [http://localhost:3000/api-docs](http://localhost:3000/api-docs) in local dev) — covers domains, mailboxes, emails, drafts, labels, attachments, and the Resend connection/webhook endpoints. Auth (`/api/auth/*`) and the Resend OAuth redirect steps aren't included; those are covered by better-auth's own docs.
+The REST API is documented as an OpenAPI 3.0 spec at [`web/public/openapi.json`](web/public/openapi.json), served statically at `/openapi.json`. Browse it with Swagger UI at `/api` (e.g. [http://localhost:3000/api](http://localhost:3000/api) in local dev) — covers domains, mailboxes, emails, drafts, labels, attachments, and the Resend connection/webhook endpoints. Auth (`/api/auth/*`) and the Resend OAuth redirect steps aren't included; those are covered by better-auth's own docs.
 
 ## Contributing
 

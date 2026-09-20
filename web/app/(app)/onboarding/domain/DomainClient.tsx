@@ -113,7 +113,7 @@ export function DomainClient({
   }
 
   return (
-    <AuthShell wide>
+    <AuthShell wide showSignOut>
       <OnboardingSteps current={2} />
       <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-800 dark:bg-brand-500/10 dark:text-brand-300">
         <Globe size={22} weight="bold" />
