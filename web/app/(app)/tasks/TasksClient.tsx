@@ -6,11 +6,15 @@ import { TopBar } from "@/components/TopBar";
 import { Sidebar } from "@/components/Sidebar";
 import { TaskListNav } from "@/components/tasks/TaskListNav";
 import { TaskList } from "@/components/tasks/TaskList";
+import { TaskDetailDialog } from "@/components/tasks/TaskDetailDialog";
 import { useTaskStore, type Task } from "@/lib/stores/task-store";
 
 export function TasksClient() {
   const { data: session } = authClient.useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [openTask, setOpenTask] = useState<Task | null>(null);
+  const tasks = useTaskStore((s) => s.tasks);
+  const liveOpenTask = openTask ? tasks.find((t) => t.id === openTask.id) ?? null : null;
 
   const hydrated = useRef<true | null>(null);
   if (hydrated.current === null) {
@@ -32,9 +36,10 @@ export function TasksClient() {
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex flex-1 overflow-hidden">
           <TaskListNav />
-          <TaskList onOpenTask={(task: Task) => console.log("open detail (Task 10)", task)} />
+          <TaskList onOpenTask={setOpenTask} />
         </div>
       </div>
+      <TaskDetailDialog task={liveOpenTask} onClose={() => setOpenTask(null)} />
     </div>
   );
 }
