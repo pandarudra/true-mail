@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { TopBar } from "@/components/TopBar";
@@ -18,14 +18,16 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // One-time store hydration from server-provided props. Guarded by the
-  // store's own `initialized` flag, and done synchronously during render
-  // (not an effect) so child components never see an empty mailbox list on
-  // first paint — this store only ever backs this one page.
-  const hydrated = useRef<true | null>(null);
-  if (hydrated.current === null) {
+  // store's own `initialized` flag. A layout effect (not the render body)
+  // so the cross-component store update doesn't fire mid-render of this
+  // component — React flags that as "update a component while rendering a
+  // different component" whenever a sibling (e.g. AskInbox in TopBar) is
+  // also subscribed. Layout effects still run before the browser paints,
+  // so there's no visible flash of an empty mailbox list either.
+  useLayoutEffect(() => {
     useInboxStore.getState().init(initialMailboxes);
-    hydrated.current = true;
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // New mail (especially inbound, via webhook) doesn't push to the client —
   // poll in the background so it shows up without a manual refresh click.
