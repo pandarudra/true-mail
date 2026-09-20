@@ -16,8 +16,7 @@ TrueMail is a self-hosted-friendly email client that runs on **your own domain**
 - **Reply, reply-all, and forward** — direction-aware recipients and quoted replies
 - **Attachments** — uploaded via Cloudinary for outgoing mail; incoming attachments are fetched from Resend on demand (no duplicate storage)
 - **Dark mode**, a hand-drawn UI (via [Drawably](https://www.npmjs.com/package/drawably)), and a profile with a custom avatar
-
-See [`feat.md`](feat.md) for the full feature roadmap and what's intentionally out of scope for now.
+- **Responsive** — the inbox, compose, settings, and landing page all adapt down to phone-sized screens
 
 ## Tech stack
 
@@ -106,9 +105,9 @@ web/
 └─ scripts/         # One-off maintenance scripts
 ```
 
-## Deployment
+## API documentation
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for deploying to Vercel.
+The REST API is documented as an OpenAPI 3.0 spec at [`web/public/openapi.json`](web/public/openapi.json), served statically at `/openapi.json`. Browse it with Swagger UI at `/api-docs` (e.g. [http://localhost:3000/api-docs](http://localhost:3000/api-docs) in local dev) — covers domains, mailboxes, emails, drafts, labels, attachments, and the Resend connection/webhook endpoints. Auth (`/api/auth/*`) and the Resend OAuth redirect steps aren't included; those are covered by better-auth's own docs.
 
 ## Contributing
 

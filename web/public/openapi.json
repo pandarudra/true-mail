@@ -1,0 +1,1298 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "TrueMail API",
+    "version": "1.0.0",
+    "description": "REST API backing the TrueMail inbox. All endpoints below (except the Resend webhook receiver) require an authenticated session cookie, issued by the better-auth routes under `/api/auth/*` (sign in, sign up, OAuth, sign out).Those routes are documented by better-auth itself, not here. `/api/oauth/resend/*` are browser-redirect OAuth steps, not JSON endpoints, and are omitted for the same reason."
+  },
+  "servers": [{ "url": "/", "description": "Same origin as the app" }],
+  "security": [{ "sessionCookie": [] }],
+  "tags": [
+    {
+      "name": "Domains",
+      "description": "Custom sending/receiving domains, verified via Resend"
+    },
+    { "name": "Mailboxes", "description": "Addresses on a verified domain" },
+    { "name": "Emails", "description": "Reading, sending, and mutating mail" },
+    { "name": "Drafts", "description": "Composing in progress" },
+    { "name": "Labels", "description": "User-defined labels" },
+    {
+      "name": "Attachments",
+      "description": "Downloading attachments on an email"
+    },
+    {
+      "name": "Resend Connection",
+      "description": "Status of the user's linked Resend account"
+    },
+    {
+      "name": "Uploads",
+      "description": "Signed Cloudinary upload params for compose attachments"
+    },
+    {
+      "name": "Webhooks",
+      "description": "Inbound webhook from Resend — called by Resend, not by the app's own clients"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "better-auth.session_token",
+        "description": "Set automatically after signing in via the better-auth routes under /api/auth/*"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": { "error": { "type": "string" } },
+        "required": ["error"]
+      },
+      "Domain": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "connectionId": { "type": "string", "format": "uuid" },
+          "resendDomainId": { "type": "string" },
+          "name": { "type": "string", "example": "mail.example.com" },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "pending",
+              "verified",
+              "failed",
+              "temporary_failure"
+            ]
+          },
+          "dnsRecords": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "record": { "type": "string" },
+                "name": { "type": "string" },
+                "type": { "type": "string" },
+                "value": { "type": "string" },
+                "priority": { "type": "integer" },
+                "status": { "type": "string" }
+              }
+            }
+          },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Mailbox": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "domainId": { "type": "string", "format": "uuid" },
+          "localPart": { "type": "string", "example": "hello" },
+          "address": { "type": "string", "format": "email" },
+          "displayName": { "type": "string", "nullable": true },
+          "isDefault": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Label": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "color": { "type": "string", "example": "#8274f9" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Attachment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "emailId": { "type": "string", "format": "uuid" },
+          "filename": { "type": "string" },
+          "contentType": { "type": "string" },
+          "size": { "type": "integer", "nullable": true },
+          "cloudinaryUrl": { "type": "string", "nullable": true },
+          "cloudinaryPublicId": { "type": "string", "nullable": true },
+          "resendAttachmentId": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Email": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "mailboxId": { "type": "string", "format": "uuid" },
+          "resendEmailId": { "type": "string", "nullable": true },
+          "direction": { "type": "string", "enum": ["in", "out"] },
+          "from": { "type": "string" },
+          "to": { "type": "array", "items": { "type": "string" } },
+          "cc": { "type": "array", "items": { "type": "string" } },
+          "subject": { "type": "string" },
+          "text": { "type": "string", "nullable": true },
+          "html": { "type": "string", "nullable": true },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "sent", "delivered", "bounced", "received"]
+          },
+          "read": { "type": "boolean" },
+          "starred": { "type": "boolean" },
+          "important": { "type": "boolean" },
+          "archived": { "type": "boolean" },
+          "spam": { "type": "boolean" },
+          "trashedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "labels": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Label" }
+          },
+          "attachments": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Attachment" }
+          }
+        }
+      },
+      "FolderId": {
+        "type": "string",
+        "enum": [
+          "inbox",
+          "starred",
+          "sent",
+          "drafts",
+          "important",
+          "archive",
+          "spam",
+          "trash",
+          "all"
+        ]
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "No active session",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource doesn't exist, or isn't owned by the current user",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/domains": {
+      "get": {
+        "tags": ["Domains"],
+        "summary": "List the current user's domains",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "domains": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Domain" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Domains"],
+        "summary": "Add a domain",
+        "description": "Either creates a new domain in Resend (`name`) or imports one that already exists on the user's Resend account (`resendDomainId`).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "example": "mail.example.com" },
+                  "resendDomainId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "domain": { "$ref": "#/components/schemas/Domain" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing name/resendDomainId, or no Resend account connected",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "502": {
+            "description": "Resend API call failed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/domains/{id}/verify": {
+      "post": {
+        "tags": ["Domains"],
+        "summary": "Re-check a domain's DNS verification status with Resend",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Refreshed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "domain": { "$ref": "#/components/schemas/Domain" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No Resend account connected",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "502": {
+            "description": "Failed to refresh status from Resend",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mailboxes": {
+      "get": {
+        "tags": ["Mailboxes"],
+        "summary": "List the current user's mailboxes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mailboxes": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Mailbox" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Mailboxes"],
+        "summary": "Create a mailbox on a verified domain",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["domainId", "localPart"],
+                "properties": {
+                  "domainId": { "type": "string", "format": "uuid" },
+                  "localPart": { "type": "string", "example": "hello" },
+                  "displayName": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mailbox": { "$ref": "#/components/schemas/Mailbox" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing fields, or domain not yet verified",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": {
+            "description": "Domain not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "409": {
+            "description": "Address already taken",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mailboxes/{id}": {
+      "patch": {
+        "tags": ["Mailboxes"],
+        "summary": "Set a mailbox as the primary/default one",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["isDefault"],
+                "properties": {
+                  "isDefault": { "type": "boolean", "enum": [true] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mailbox": { "$ref": "#/components/schemas/Mailbox" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "isDefault must be true",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Mailboxes"],
+        "summary": "Delete a mailbox",
+        "description": "Cascades to delete every email in the mailbox. Fails if it's the user's only mailbox.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "ok": { "type": "boolean" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Can't delete the only mailbox",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/emails": {
+      "get": {
+        "tags": ["Emails"],
+        "summary": "List emails in a mailbox folder",
+        "parameters": [
+          {
+            "name": "mailboxId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "folder",
+            "in": "query",
+            "required": false,
+            "schema": { "$ref": "#/components/schemas/FolderId" },
+            "description": "Defaults to `inbox`"
+          },
+          {
+            "name": "labelId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "emails": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Email" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing mailboxId or invalid folder",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": {
+            "description": "Mailbox not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Emails"],
+        "summary": "Send an email",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["mailboxId", "to", "subject", "text"],
+                "properties": {
+                  "mailboxId": { "type": "string", "format": "uuid" },
+                  "to": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "email" }
+                  },
+                  "cc": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "email" }
+                  },
+                  "subject": { "type": "string" },
+                  "text": { "type": "string" },
+                  "html": { "type": "string" },
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "publicId": { "type": "string" },
+                        "url": { "type": "string" },
+                        "filename": { "type": "string" },
+                        "contentType": { "type": "string" },
+                        "size": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "email": { "$ref": "#/components/schemas/Email" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required fields, or domain not verified",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": {
+            "description": "Mailbox not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "502": {
+            "description": "Resend failed to send",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Emails"],
+        "summary": "Bulk-update flags on a set of emails",
+        "description": "Used for bulk actions in the inbox toolbar (mark read, star, archive, spam, trash).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ids"],
+                "properties": {
+                  "ids": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "uuid" }
+                  },
+                  "read": { "type": "boolean" },
+                  "starred": { "type": "boolean" },
+                  "important": { "type": "boolean" },
+                  "archived": { "type": "boolean" },
+                  "spam": { "type": "boolean" },
+                  "trashed": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "updated": { "type": "integer" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ids is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "delete": {
+        "tags": ["Emails"],
+        "summary": "Bulk-delete emails permanently",
+        "description": "Used by \"Delete forever\" and \"Empty trash\".",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ids"],
+                "properties": {
+                  "ids": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "uuid" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "deleted": { "type": "integer" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ids is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/emails/{id}": {
+      "get": {
+        "tags": ["Emails"],
+        "summary": "Get a single email",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "email": { "$ref": "#/components/schemas/Email" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "patch": {
+        "tags": ["Emails"],
+        "summary": "Update a single email",
+        "description": "Flag fields (read/starred/important/archived/spam/trashed) can be set on any email. Content fields (to/cc/subject/text/mailboxId/attachments) are autosave writes and only apply while the email is still a draft.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "read": { "type": "boolean" },
+                  "starred": { "type": "boolean" },
+                  "important": { "type": "boolean" },
+                  "archived": { "type": "boolean" },
+                  "spam": { "type": "boolean" },
+                  "trashed": { "type": "boolean" },
+                  "mailboxId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Draft only"
+                  },
+                  "to": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Draft only"
+                  },
+                  "cc": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Draft only"
+                  },
+                  "subject": { "type": "string", "description": "Draft only" },
+                  "text": { "type": "string", "description": "Draft only" },
+                  "attachments": {
+                    "type": "array",
+                    "items": { "type": "object" },
+                    "description": "Draft only — replaces the full attachment set"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "email": { "$ref": "#/components/schemas/Email" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": {
+            "description": "Email or target mailbox not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Emails"],
+        "summary": "Permanently delete a single email",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "ok": { "type": "boolean" } }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/emails/{id}/labels": {
+      "put": {
+        "tags": ["Emails", "Labels"],
+        "summary": "Replace an email's full label set",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "labelIds": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "uuid" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "email": { "$ref": "#/components/schemas/Email" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/emails/{id}/attachments/{attachmentId}/download": {
+      "get": {
+        "tags": ["Attachments"],
+        "summary": "Download an attachment",
+        "description": "Redirects to a Cloudinary URL (outbound attachments) or a freshly-signed Resend download URL (inbound attachments).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "Email id"
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "302": { "description": "Redirect to the file" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "502": {
+            "description": "Attachment unavailable from Resend",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/drafts": {
+      "post": {
+        "tags": ["Drafts"],
+        "summary": "Create a draft",
+        "description": "Creates an empty or partial draft. Content is then filled in via PATCH /api/emails/{id} as the user types (autosave).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["mailboxId"],
+                "properties": {
+                  "mailboxId": { "type": "string", "format": "uuid" },
+                  "to": { "type": "array", "items": { "type": "string" } },
+                  "cc": { "type": "array", "items": { "type": "string" } },
+                  "subject": { "type": "string" },
+                  "text": { "type": "string" },
+                  "attachments": {
+                    "type": "array",
+                    "items": { "type": "object" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "email": { "$ref": "#/components/schemas/Email" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "mailboxId is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": {
+            "description": "Mailbox not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/labels": {
+      "get": {
+        "tags": ["Labels"],
+        "summary": "List the current user's labels",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "labels": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Label" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Labels"],
+        "summary": "Create a label",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "color": { "type": "string", "example": "#8274f9" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "label": { "$ref": "#/components/schemas/Label" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "name is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "409": {
+            "description": "A label with that name already exists",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/labels/{id}": {
+      "patch": {
+        "tags": ["Labels"],
+        "summary": "Rename or recolor a label",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "color": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "label": { "$ref": "#/components/schemas/Label" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Labels"],
+        "summary": "Delete a label",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "ok": { "type": "boolean" } }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/resend-connection": {
+      "get": {
+        "tags": ["Resend Connection"],
+        "summary": "Check whether the user has connected a Resend account",
+        "description": "The connection itself is created by the OAuth flow at /api/oauth/resend/start and /callback — this endpoint only reports status.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "connected": { "type": "boolean" },
+                    "connection": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": { "type": "string", "format": "uuid" },
+                        "createdAt": { "type": "string", "format": "date-time" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/sign-cloudinary-params": {
+      "post": {
+        "tags": ["Uploads"],
+        "summary": "Sign Cloudinary upload parameters for a compose attachment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["paramsToSign"],
+                "properties": {
+                  "paramsToSign": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "signature": { "type": "string" } }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/webhooks/resend/{connectionId}": {
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Inbound Resend webhook",
+        "description": "Called by Resend, not by app clients. Verifies the Svix signature against the connection's stored webhook secret, then records received/sent/delivered/bounced events.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "connectionId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "A Resend webhook event payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Processed (or a legitimate no-op, e.g. unmatched recipient)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "ok": { "type": "boolean" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid Svix signature",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown connection id",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "502": {
+            "description": "Failed to fetch the received email body from Resend",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
