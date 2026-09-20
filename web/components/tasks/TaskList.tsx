@@ -56,16 +56,20 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto p-4 sm:p-6">
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {/* Too cramped to be usable next to the filter/+ button on mobile —
-            the "+" button's New Task dialog covers task creation there. */}
+      {/* Below sm: no inline toolbar at all — quick-add and the priority
+          filter are both too cramped to be usable on a phone-width screen.
+          A fixed bottom-right FAB (rendered further down) replaces the
+          inline "+" button as the mobile entry point for creating a task;
+          the priority filter's job is covered by the TopBar's advanced
+          task search on mobile. */}
+      <div className="mb-4 hidden flex-wrap items-center gap-2 sm:flex">
         <Input
           type="text"
           value={quickTitle}
           onChange={(e) => setQuickTitle(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submitQuickAdd()}
           placeholder="Add a task…"
-          className="hidden min-w-0 flex-1 sm:block"
+          className="min-w-0 flex-1"
         />
         <Select
           aria-label="Filter by priority"
@@ -79,11 +83,7 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
           <option value="NORMAL">Normal</option>
           <option value="LOW">Low</option>
         </Select>
-        <IconButton
-          label="New task"
-          onClick={() => setCreatingTask(true)}
-          className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0"
-        >
+        <IconButton label="New task" onClick={() => setCreatingTask(true)}>
           <Plus size={16} />
         </IconButton>
       </div>
@@ -150,6 +150,14 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
           <li className="px-2 py-6 text-center text-sm text-text-secondary">No tasks here.</li>
         )}
       </ul>
+      <button
+        type="button"
+        onClick={() => setCreatingTask(true)}
+        aria-label="New task"
+        className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-brand-500 text-white shadow-lg transition-transform active:scale-95 sm:hidden"
+      >
+        <Plus size={24} weight="bold" />
+      </button>
       <NewTaskDialog
         open={creatingTask}
         onClose={() => setCreatingTask(false)}
