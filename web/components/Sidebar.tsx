@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Archive,
   CheckSquare,
@@ -63,6 +63,8 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
   const unreadCount = useInboxStore((s) => s.inboxUnreadCount);
   const selectFolder = useInboxStore((s) => s.selectFolder);
   const pathname = usePathname();
+  const router = useRouter();
+  const onInbox = pathname === "/inbox";
 
   return (
     <>
@@ -86,13 +88,14 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
 
         <nav className="flex flex-col gap-1">
           {FOLDER_NAV.map(({ id, label, icon: Icon }) => {
-            const active = id === activeFolder;
+            const active = onInbox && id === activeFolder;
             return (
               <button
                 key={id}
                 type="button"
                 onClick={() => {
                   selectFolder(id);
+                  if (!onInbox) router.push("/inbox");
                   onClose?.();
                 }}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
@@ -322,6 +325,9 @@ function LabelsNav({ onNavigate }: { onNavigate?: () => void }) {
   const createLabel = useInboxStore((s) => s.createLabel);
   const renameLabel = useInboxStore((s) => s.renameLabel);
   const deleteLabel = useInboxStore((s) => s.deleteLabel);
+  const pathname = usePathname();
+  const router = useRouter();
+  const onInbox = pathname === "/inbox";
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -339,10 +345,11 @@ function LabelsNav({ onNavigate }: { onNavigate?: () => void }) {
               type="button"
               onClick={() => {
                 selectLabel(label.id);
+                if (!onInbox) router.push("/inbox");
                 onNavigate?.();
               }}
               className={`flex flex-1 items-center gap-3 truncate rounded-xl px-3 py-2 text-left text-sm transition-colors ${
-                activeLabelId === label.id
+                onInbox && activeLabelId === label.id
                   ? "bg-surface-subtle font-medium text-foreground"
                   : "text-text-secondary hover:bg-surface-subtle"
               }`}
