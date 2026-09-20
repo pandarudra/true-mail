@@ -54,13 +54,14 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto p-4 sm:p-6">
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <Input
           type="text"
           value={quickTitle}
           onChange={(e) => setQuickTitle(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submitQuickAdd()}
           placeholder="Add a task…"
+          className="min-w-0 flex-1"
         />
         <Select
           aria-label="Filter by priority"
@@ -92,7 +93,9 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
             className="group flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-surface-subtle"
           >
             {dragEnabled && (
-              <DotsSixVertical size={14} className="shrink-0 cursor-grab text-text-muted" />
+              // Native HTML5 drag-and-drop doesn't respond to touch, so the
+              // handle would be a non-functional affordance on mobile.
+              <DotsSixVertical size={14} className="hidden shrink-0 cursor-grab text-text-muted sm:flex" />
             )}
             <Checkbox
               checked={task.completed}
@@ -124,7 +127,9 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
               label="Delete task"
               tone="danger"
               onClick={() => deleteTask(task.id)}
-              className="hidden h-6 w-6 shrink-0 group-hover:flex"
+              // Always reachable on touch (no :hover there); fades in on
+              // hover only where a real pointer exists.
+              className="flex h-6 w-6 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
             >
               <TrashSimple size={12} />
             </IconButton>

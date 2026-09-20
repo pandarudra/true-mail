@@ -42,7 +42,7 @@ export function TasksClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
       />
       <div className="flex flex-1 overflow-hidden bg-surface">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
           <TaskListNav />
           <TaskList onOpenTask={setOpenTask} />
         </div>

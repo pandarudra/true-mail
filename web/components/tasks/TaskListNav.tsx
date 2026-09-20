@@ -41,8 +41,14 @@ export function TaskListNav() {
   const editing = taskLists.find((l) => l.id === editingId) ?? null;
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col overflow-y-auto border-r border-border p-4">
-      <nav className="flex flex-col gap-1">
+    <>
+      {/* Below lg: a horizontal scrollable pill bar, matching the app's
+          mobile-first single-column layout — the vertical sidebar below
+          would otherwise eat most of a phone's width. Renaming/deleting a
+          list from here is intentionally left out: it's a low-frequency
+          action, and the icons that trigger it rely on :hover (desktop
+          only) anyway, so it's reached from the lg+ layout instead. */}
+      <nav className="flex shrink-0 gap-2 overflow-x-auto border-b border-border p-3 lg:hidden" aria-label="Views and lists">
         {SMART_VIEWS.map(({ id, label, icon: Icon }) => {
           const active = activeView.kind === "smart" && activeView.smart === id;
           return (
@@ -50,55 +56,110 @@ export function TaskListNav() {
               key={id}
               type="button"
               onClick={() => selectSmartView(id)}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors ${
-                active
-                  ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
-                  : "text-text-secondary hover:bg-surface-subtle"
+              className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors ${
+                active ? "bg-brand-500 text-white" : "bg-surface-subtle text-text-secondary"
               }`}
             >
-              <Icon size={16} weight={active ? "fill" : "regular"} />
+              <Icon size={15} weight={active ? "fill" : "regular"} />
               {label}
             </button>
           );
         })}
-      </nav>
-
-      <p className="mb-2 mt-6 px-1 text-xs font-medium uppercase tracking-wide text-text-secondary">
-        Lists
-      </p>
-      <nav className="flex flex-col gap-1">
-        {taskLists.map((list) => (
-          <div key={list.id} className="group flex items-center gap-1">
+        {taskLists.length > 0 && <span className="my-auto h-5 w-px shrink-0 bg-border" />}
+        {taskLists.map((list) => {
+          const active = activeView.kind === "list" && activeView.listId === list.id;
+          return (
             <button
+              key={list.id}
               type="button"
               onClick={() => selectList(list.id)}
-              className={`flex flex-1 items-center gap-3 truncate rounded-xl px-3 py-2 text-left text-sm transition-colors ${
-                activeView.kind === "list" && activeView.listId === list.id
-                  ? "bg-surface-subtle font-medium text-foreground"
-                  : "text-text-secondary hover:bg-surface-subtle"
+              className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors ${
+                active ? "border-foreground text-foreground" : "border-border text-text-secondary"
               }`}
             >
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: list.color }} />
-              <span className="flex-1 truncate">{list.name}</span>
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: list.color }} />
+              {list.name}
             </button>
-            <div className="hidden shrink-0 gap-0.5 group-hover:flex">
-              <IconButton label={`Rename ${list.name}`} onClick={() => setEditingId(list.id)} className="h-6 w-6">
-                <PencilSimpleLine size={12} />
-              </IconButton>
-              {!list.isDefault && (
-                <IconButton
-                  label={`Delete ${list.name}`}
-                  tone="danger"
-                  onClick={() => deleteList(list.id)}
-                  className="h-6 w-6"
-                >
-                  <X size={12} />
-                </IconButton>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          aria-label="Create list"
+          className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-text-secondary"
+        >
+          <Plus size={16} />
+        </button>
       </nav>
+
+      <aside className="hidden w-56 shrink-0 flex-col overflow-y-auto border-r border-border p-4 lg:flex">
+        <nav className="flex flex-col gap-1">
+          {SMART_VIEWS.map(({ id, label, icon: Icon }) => {
+            const active = activeView.kind === "smart" && activeView.smart === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => selectSmartView(id)}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+                    : "text-text-secondary hover:bg-surface-subtle"
+                }`}
+              >
+                <Icon size={16} weight={active ? "fill" : "regular"} />
+                {label}
+              </button>
+            );
+          })}
+        </nav>
+
+        <p className="mb-2 mt-6 px-1 text-xs font-medium uppercase tracking-wide text-text-secondary">
+          Lists
+        </p>
+        <nav className="flex flex-col gap-1">
+          {taskLists.map((list) => (
+            <div key={list.id} className="group flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => selectList(list.id)}
+                className={`flex flex-1 items-center gap-3 truncate rounded-xl px-3 py-2 text-left text-sm transition-colors ${
+                  activeView.kind === "list" && activeView.listId === list.id
+                    ? "bg-surface-subtle font-medium text-foreground"
+                    : "text-text-secondary hover:bg-surface-subtle"
+                }`}
+              >
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: list.color }} />
+                <span className="flex-1 truncate">{list.name}</span>
+              </button>
+              <div className="hidden shrink-0 gap-0.5 group-hover:flex">
+                <IconButton label={`Rename ${list.name}`} onClick={() => setEditingId(list.id)} className="h-6 w-6">
+                  <PencilSimpleLine size={12} />
+                </IconButton>
+                {!list.isDefault && (
+                  <IconButton
+                    label={`Delete ${list.name}`}
+                    tone="danger"
+                    onClick={() => deleteList(list.id)}
+                    className="h-6 w-6"
+                  >
+                    <X size={12} />
+                  </IconButton>
+                )}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface-subtle"
+        >
+          <Plus size={16} />
+          Create list
+        </button>
+      </aside>
 
       <Dialog open={editing !== null} onClose={() => setEditingId(null)} title="Rename list">
         {editing && (
@@ -113,15 +174,6 @@ export function TaskListNav() {
           />
         )}
       </Dialog>
-
-      <button
-        type="button"
-        onClick={() => setCreating(true)}
-        className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface-subtle"
-      >
-        <Plus size={16} />
-        Create list
-      </button>
       <Dialog open={creating} onClose={() => setCreating(false)} title="Create list">
         <ListForm
           onSubmit={async (name, color) => {
@@ -131,7 +183,7 @@ export function TaskListNav() {
           submitLabel="Create"
         />
       </Dialog>
-    </aside>
+    </>
   );
 }
 

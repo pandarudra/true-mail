@@ -54,7 +54,7 @@ export function AskInbox() {
   const panelOpen = asking && (loading || error || result);
 
   return (
-    <div className="relative mx-auto w-full max-w-xl">
+    <div className="relative min-w-0 flex-1 sm:mx-auto sm:max-w-xl">
       <MagnifyingGlass
         size={16}
         className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-text-muted"

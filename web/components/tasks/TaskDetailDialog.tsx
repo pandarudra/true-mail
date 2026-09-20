@@ -76,7 +76,7 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
               defaultValue={toDateInputValue(task.dueAt)}
               key={`date-${task.id}`}
               onChange={(e) => setDue(e.target.value, toTimeInputValue(task.dueAt))}
-              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-foreground"
+              className="min-h-11 rounded-lg border border-border bg-surface px-2.5 text-sm text-foreground"
             />
             <input
               type="time"
@@ -84,7 +84,7 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
               key={`time-${task.id}`}
               disabled={!task.dueAt}
               onChange={(e) => setDue(toDateInputValue(task.dueAt), e.target.value)}
-              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-foreground disabled:opacity-50"
+              className="min-h-11 rounded-lg border border-border bg-surface px-2.5 text-sm text-foreground disabled:opacity-50"
             />
             <Select
               aria-label="Priority"
