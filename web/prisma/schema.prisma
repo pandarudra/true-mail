@@ -24,6 +24,8 @@ model User {
   sessions         Session[]
   accounts         Account[]
   labels           Label[]
+  taskLists        TaskList[]
+  tasks            Task[]
 
   @@map("user")
 }
@@ -94,6 +96,7 @@ model Email {
   createdAt     DateTime  @default(now())
   labels        Label[]
   attachments   Attachment[]
+  tasks         Task[]
 }
 
 model Attachment {
@@ -122,6 +125,56 @@ model Label {
   emails    Email[]
 
   @@unique([userId, name])
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model TaskList {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String   @default("#6b7280")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  tasks     Task[]
+
+  @@unique([userId, name])
+}
+
+model Task {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listId        String
+  list          TaskList  @relation(fields: [listId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  dueAt         DateTime?
+  dueHasTime    Boolean   @default(false)
+  priority      Priority  @default(NORMAL)
+  completed     Boolean   @default(false)
+  completedAt   DateTime?
+  position      Int       @default(0)
+  sourceEmailId String?
+  sourceEmail   Email?    @relation(fields: [sourceEmailId], references: [id], onDelete: SetNull)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  subtasks      Subtask[]
+}
+
+model Subtask {
+  id        String  @id @default(uuid())
+  taskId    String
+  task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title     String
+  completed Boolean @default(false)
+  position  Int     @default(0)
 }
 
 model Session {
