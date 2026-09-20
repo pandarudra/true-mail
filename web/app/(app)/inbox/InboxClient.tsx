@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { TopBar } from "@/components/TopBar";
 import { Sidebar } from "@/components/Sidebar";
@@ -36,6 +37,16 @@ export function InboxClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
       void useInboxStore.getState().refreshInboxUnreadCount();
     }, 20_000);
     return () => clearInterval(interval);
+  }, []);
+
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const emailId = searchParams.get("emailId");
+    if (emailId) void useInboxStore.getState().selectEmail(emailId);
+    // Intentionally runs once per mount only — this is a one-shot deep link,
+    // not a synced-with-the-URL view; the reading pane's own state takes
+    // over after the initial open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
