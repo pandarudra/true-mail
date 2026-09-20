@@ -57,13 +57,15 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
   return (
     <div className="flex flex-1 flex-col overflow-y-auto p-4 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center gap-2">
+        {/* Too cramped to be usable next to the filter/+ button on mobile —
+            the "+" button's New Task dialog covers task creation there. */}
         <Input
           type="text"
           value={quickTitle}
           onChange={(e) => setQuickTitle(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submitQuickAdd()}
           placeholder="Add a task…"
-          className="min-w-0 flex-1"
+          className="hidden min-w-0 flex-1 sm:block"
         />
         <Select
           aria-label="Filter by priority"
@@ -77,7 +79,11 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
           <option value="NORMAL">Normal</option>
           <option value="LOW">Low</option>
         </Select>
-        <IconButton label="New task" onClick={() => setCreatingTask(true)}>
+        <IconButton
+          label="New task"
+          onClick={() => setCreatingTask(true)}
+          className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0"
+        >
           <Plus size={16} />
         </IconButton>
       </div>
