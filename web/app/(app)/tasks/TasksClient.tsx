@@ -8,8 +8,9 @@ import { TaskListNav } from "@/components/tasks/TaskListNav";
 import { TaskList } from "@/components/tasks/TaskList";
 import { TaskDetailDialog } from "@/components/tasks/TaskDetailDialog";
 import { useTaskStore, type Task } from "@/lib/stores/task-store";
+import { useInboxStore, type Mailbox } from "@/lib/stores/inbox-store";
 
-export function TasksClient() {
+export function TasksClient({ initialMailboxes }: { initialMailboxes: Mailbox[] }) {
   const { data: session } = authClient.useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openTask, setOpenTask] = useState<Task | null>(null);
@@ -20,9 +21,14 @@ export function TasksClient() {
   // cross-component store update needs to happen after React's render/commit
   // phase, not during it (avoids "update a component while rendering a
   // different component" whenever a sibling like TaskListNav is subscribed).
+  //
+  // inbox-store also gets hydrated here (not just on /inbox): the shared
+  // Sidebar's Mailboxes/Labels sections read from it, and this page doesn't
+  // otherwise mount InboxClient, the only other place that hydrates it.
   useLayoutEffect(() => {
+    useInboxStore.getState().init(initialMailboxes);
     useTaskStore.getState().init();
-  }, []);
+  }, [initialMailboxes]);
 
   return (
     <div className="flex h-screen flex-col bg-surface-subtle">
