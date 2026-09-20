@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DotsSixVertical, EnvelopeSimple, Flag, Plus, TrashSimple } from "@phosphor-icons/react";
+import { DrawablyButton } from "drawably/react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -150,14 +151,17 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
           <li className="px-2 py-6 text-center text-sm text-text-secondary">No tasks here.</li>
         )}
       </ul>
-      <button
+      <DrawablyButton
         type="button"
         onClick={() => setCreatingTask(true)}
         aria-label="New task"
-        className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-brand-500 text-white shadow-lg transition-transform active:scale-95 sm:hidden"
+        variant="solid"
+        roughness={0.3}
+        boil={0.1}
+        className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg sm:hidden"
       >
         <Plus size={24} weight="bold" />
-      </button>
+      </DrawablyButton>
       <NewTaskDialog
         open={creatingTask}
         onClose={() => setCreatingTask(false)}
