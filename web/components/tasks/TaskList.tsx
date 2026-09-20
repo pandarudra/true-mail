@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { DotsSixVertical, EnvelopeSimple, Flag, TrashSimple } from "@phosphor-icons/react";
+import { DotsSixVertical, EnvelopeSimple, Flag, Plus, TrashSimple } from "@phosphor-icons/react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { IconButton } from "@/components/ui/IconButton";
+import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { useFilteredTasks, useTaskStore, type Priority, type Task } from "@/lib/stores/task-store";
 
 const PRIORITY_COLOR: Record<Priority, string> = {
@@ -35,6 +36,7 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
   const [quickTitle, setQuickTitle] = useState("");
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<Priority | "ALL">("ALL");
+  const [creatingTask, setCreatingTask] = useState(false);
 
   // Reordering is only meaningful within a single real list — a smart view
   // (Today/Upcoming/...) can span many lists, where "position" has no single
@@ -75,6 +77,9 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
           <option value="NORMAL">Normal</option>
           <option value="LOW">Low</option>
         </Select>
+        <IconButton label="New task" onClick={() => setCreatingTask(true)}>
+          <Plus size={16} />
+        </IconButton>
       </div>
       <ul className="flex flex-col gap-1">
         {visibleTasks.map((task) => (
@@ -139,6 +144,11 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
           <li className="px-2 py-6 text-center text-sm text-text-secondary">No tasks here.</li>
         )}
       </ul>
+      <NewTaskDialog
+        open={creatingTask}
+        onClose={() => setCreatingTask(false)}
+        defaultListId={listId ?? undefined}
+      />
     </div>
   );
 }
