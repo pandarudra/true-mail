@@ -5,7 +5,8 @@ import { authClient } from "@/lib/auth-client";
 import { TopBar } from "@/components/TopBar";
 import { Sidebar } from "@/components/Sidebar";
 import { TaskListNav } from "@/components/tasks/TaskListNav";
-import { useTaskStore } from "@/lib/stores/task-store";
+import { TaskList } from "@/components/tasks/TaskList";
+import { useTaskStore, type Task } from "@/lib/stores/task-store";
 
 export function TasksClient() {
   const { data: session } = authClient.useSession();
@@ -31,9 +32,7 @@ export function TasksClient() {
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex flex-1 overflow-hidden">
           <TaskListNav />
-          <div className="flex flex-1 flex-col overflow-y-auto p-4 sm:p-6">
-            <p className="text-sm text-text-secondary">Task list goes here (Task 9).</p>
-          </div>
+          <TaskList onOpenTask={(task: Task) => console.log("open detail (Task 10)", task)} />
         </div>
       </div>
     </div>
