@@ -138,18 +138,24 @@ export const useInboxStore = create<InboxState>((set, get) => ({
   async fetchFolderEmails() {
     set({ loading: true });
     const res = await fetch(folderEmailsUrl(get()));
+    if (!res.ok) {
+      set({ loading: false });
+      return;
+    }
     const { emails: all } = await res.json();
     set({ emails: all, lastRefreshedAt: new Date(), loading: false });
   },
 
   async fetchLabels() {
     const res = await fetch("/api/labels");
+    if (!res.ok) return;
     const { labels: all } = await res.json();
     set({ labels: all });
   },
 
   async refreshInboxUnreadCount() {
     const res = await fetch(`/api/emails?mailboxId=${get().activeMailboxId}&folder=inbox`);
+    if (!res.ok) return;
     const { emails: inbox } = await res.json();
     set({ inboxUnreadCount: inbox.filter((e: Email) => !e.read).length });
   },
@@ -268,6 +274,10 @@ export const useInboxStore = create<InboxState>((set, get) => ({
   async refresh() {
     set({ refreshing: true });
     const res = await fetch(folderEmailsUrl(get()));
+    if (!res.ok) {
+      set({ refreshing: false });
+      return;
+    }
     const { emails: all } = await res.json();
     set({ emails: all, lastRefreshedAt: new Date(), refreshing: false });
   },

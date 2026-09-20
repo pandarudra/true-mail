@@ -82,6 +82,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   async fetchTaskLists() {
     const res = await fetch("/api/task-lists");
+    if (!res.ok) return;
     const { taskLists } = await res.json();
     set({ taskLists });
   },
@@ -89,6 +90,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   async fetchTasks() {
     set({ loading: true });
     const res = await fetch("/api/tasks");
+    if (!res.ok) {
+      set({ loading: false });
+      return;
+    }
     const { tasks } = await res.json();
     set({ tasks, loading: false });
   },
@@ -137,6 +142,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
+    if (!res.ok) return;
     const { task } = await res.json();
     set((state) => ({ tasks: [...state.tasks, task] }));
   },
@@ -147,6 +153,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
+    if (!res.ok) return;
     const { task } = await res.json();
     set((state) => ({ tasks: state.tasks.map((t) => (t.id === id ? task : t)) }));
   },
@@ -199,6 +206,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
     });
+    if (!res.ok) return;
     const { task } = await res.json();
     set((state) => ({ tasks: state.tasks.map((t) => (t.id === taskId ? task : t)) }));
   },
@@ -209,12 +217,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ completed }),
     });
+    if (!res.ok) return;
     const { task } = await res.json();
     set((state) => ({ tasks: state.tasks.map((t) => (t.id === taskId ? task : t)) }));
   },
 
   async deleteSubtask(taskId, subtaskId) {
     const res = await fetch(`/api/tasks/${taskId}/subtasks/${subtaskId}`, { method: "DELETE" });
+    if (!res.ok) return;
     const { task } = await res.json();
     set((state) => ({ tasks: state.tasks.map((t) => (t.id === taskId ? task : t)) }));
   },
