@@ -111,7 +111,7 @@ export default function SignupPage() {
         type="button"
         variant="secondary"
         className="w-full"
-        onClick={() => authClient.signIn.social({ provider: "google" })}
+        onClick={() => authClient.signIn.social({ provider: "google", errorCallbackURL: "/login" })}
       >
         <GoogleIcon />
         Continue with Google

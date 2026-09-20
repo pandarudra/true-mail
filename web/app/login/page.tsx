@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeClosed } from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth-client";
@@ -11,12 +11,23 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { IconButton } from "@/components/ui/IconButton";
 
-export default function LoginPage() {
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  account_not_linked: "An account with this email already exists. Sign in with your password instead.",
+};
+
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error: oauthError } = use(searchParams);
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    oauthError ? (OAUTH_ERROR_MESSAGES[oauthError] ?? "Something went wrong signing in with Google. Please try again.") : null
+  );
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -94,7 +105,7 @@ export default function LoginPage() {
         type="button"
         variant="secondary"
         className="w-full"
-        onClick={() => authClient.signIn.social({ provider: "google" })}
+        onClick={() => authClient.signIn.social({ provider: "google", errorCallbackURL: "/login" })}
       >
         <GoogleIcon />
         Continue with Google
