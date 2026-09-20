@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Archive,
+  CheckSquare,
   EnvelopeSimple,
   Flag,
   NotePencil,
@@ -60,6 +62,7 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
   const activeFolder = useInboxStore((s) => s.activeFolder);
   const unreadCount = useInboxStore((s) => s.inboxUnreadCount);
   const selectFolder = useInboxStore((s) => s.selectFolder);
+  const pathname = usePathname();
 
   return (
     <>
@@ -109,6 +112,26 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
             );
           })}
         </nav>
+
+        <div className="mt-6">
+          <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-text-secondary">
+            Productivity
+          </p>
+          <nav className="flex flex-col gap-1">
+            <a
+              href="/tasks"
+              onClick={onClose}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                pathname === "/tasks"
+                  ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+                  : "text-text-secondary hover:bg-surface-subtle"
+              }`}
+            >
+              <CheckSquare size={18} weight={pathname === "/tasks" ? "fill" : "regular"} />
+              Tasks
+            </a>
+          </nav>
+        </div>
 
         <LabelsNav onNavigate={onClose} />
         <MailboxesNav onNavigate={onClose} />
