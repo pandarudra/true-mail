@@ -151,17 +151,24 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
           <li className="px-2 py-6 text-center text-sm text-text-secondary">No tasks here.</li>
         )}
       </ul>
-      <DrawablyButton
-        type="button"
-        onClick={() => setCreatingTask(true)}
-        aria-label="New task"
-        variant="solid"
-        roughness={0.3}
-        boil={0.1}
-        className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg sm:hidden"
-      >
-        <Plus size={24} weight="bold" />
-      </DrawablyButton>
+      {/* The fixed positioning lives on this plain wrapper, not on the
+          DrawablyButton itself — drawably's own `.drawably-host` class sets
+          `position: relative` on the button element for its SVG sketch
+          overlay, which otherwise wins the cascade over `fixed` and leaves
+          the button stuck in normal document flow instead of floating. */}
+      <div className="fixed bottom-5 right-5 z-30 sm:hidden">
+        <DrawablyButton
+          type="button"
+          onClick={() => setCreatingTask(true)}
+          aria-label="New task"
+          variant="solid"
+          roughness={0.3}
+          boil={0.1}
+          className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg"
+        >
+          <Plus size={24} weight="bold" />
+        </DrawablyButton>
+      </div>
       <NewTaskDialog
         open={creatingTask}
         onClose={() => setCreatingTask(false)}
