@@ -1,14 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { DotsSixVertical, EnvelopeSimple, Flag, Plus, TrashSimple } from "@phosphor-icons/react";
+import {
+  DotsSixVertical,
+  EnvelopeSimple,
+  Flag,
+  Plus,
+  TrashSimple,
+} from "@phosphor-icons/react";
 import { DrawablyButton } from "drawably/react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { IconButton } from "@/components/ui/IconButton";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
-import { useFilteredTasks, useTaskStore, type Priority, type Task } from "@/lib/stores/task-store";
+import {
+  useFilteredTasks,
+  useTaskStore,
+  type Priority,
+  type Task,
+} from "@/lib/stores/task-store";
 
 const PRIORITY_COLOR: Record<Priority, string> = {
   LOW: "text-text-muted",
@@ -43,7 +54,10 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
   // (Today/Upcoming/...) can span many lists, where "position" has no single
   // reference frame.
   const listId = activeView.kind === "list" ? activeView.listId : null;
-  const visibleTasks = priorityFilter === "ALL" ? tasks : tasks.filter((t) => t.priority === priorityFilter);
+  const visibleTasks =
+    priorityFilter === "ALL"
+      ? tasks
+      : tasks.filter((t) => t.priority === priorityFilter);
   // Position indices are computed against the full (unfiltered) list, so
   // dragging is only safe when the priority filter isn't narrowing what's shown.
   const dragEnabled = listId !== null && priorityFilter === "ALL";
@@ -75,7 +89,9 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
         <Select
           aria-label="Filter by priority"
           value={priorityFilter}
-          onChange={(e) => setPriorityFilter(e.target.value as Priority | "ALL")}
+          onChange={(e) =>
+            setPriorityFilter(e.target.value as Priority | "ALL")
+          }
           className="w-auto shrink-0"
         >
           <option value="ALL">All priorities</option>
@@ -97,8 +113,16 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
             onDragOver={(e) => dragEnabled && e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
-              if (!dragEnabled || !listId || !draggingId || draggingId === task.id) return;
-              const targetIndex = visibleTasks.findIndex((t) => t.id === task.id);
+              if (
+                !dragEnabled ||
+                !listId ||
+                !draggingId ||
+                draggingId === task.id
+              )
+                return;
+              const targetIndex = visibleTasks.findIndex(
+                (t) => t.id === task.id,
+              );
               void reorderTask(draggingId, listId, targetIndex);
               setDraggingId(null);
             }}
@@ -107,7 +131,10 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
             {dragEnabled && (
               // Native HTML5 drag-and-drop doesn't respond to touch, so the
               // handle would be a non-functional affordance on mobile.
-              <DotsSixVertical size={14} className="hidden shrink-0 cursor-grab text-text-muted sm:flex" />
+              <DotsSixVertical
+                size={14}
+                className="hidden shrink-0 cursor-grab text-text-muted sm:flex"
+              />
             )}
             <Checkbox
               checked={task.completed}
@@ -117,19 +144,32 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
               type="button"
               onClick={() => onOpenTask(task)}
               className={`flex min-w-0 flex-1 items-center gap-2 text-left text-sm ${
-                task.completed ? "text-text-muted line-through" : "text-foreground"
+                task.completed
+                  ? "text-text-muted line-through"
+                  : "text-foreground"
               }`}
             >
               <span className="truncate">{task.title}</span>
-              {task.sourceEmail && <EnvelopeSimple size={13} className="shrink-0 text-text-muted" />}
+              {task.sourceEmail && (
+                <EnvelopeSimple
+                  size={13}
+                  className="shrink-0 text-text-muted"
+                />
+              )}
             </button>
             {task.priority !== "NORMAL" && (
-              <Flag size={14} weight="fill" className={`shrink-0 ${PRIORITY_COLOR[task.priority]}`} />
+              <Flag
+                size={14}
+                weight="fill"
+                className={`shrink-0 ${PRIORITY_COLOR[task.priority]}`}
+              />
             )}
             {task.dueAt && (
               <span
                 className={`shrink-0 whitespace-nowrap text-xs ${
-                  !task.completed && new Date(task.dueAt) < new Date() ? "text-red-600" : "text-text-secondary"
+                  !task.completed && new Date(task.dueAt) < new Date()
+                    ? "text-red-600"
+                    : "text-text-secondary"
                 }`}
               >
                 {formatDue(task.dueAt, task.dueHasTime)}
@@ -148,7 +188,9 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
           </li>
         ))}
         {visibleTasks.length === 0 && (
-          <li className="px-2 py-6 text-center text-sm text-text-secondary">No tasks here.</li>
+          <li className="px-2 py-6 text-center text-sm text-text-secondary">
+            No tasks here.
+          </li>
         )}
       </ul>
       {/* The fixed positioning lives on this plain wrapper, not on the
@@ -161,7 +203,7 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
           type="button"
           onClick={() => setCreatingTask(true)}
           aria-label="New task"
-          variant="solid"
+          variant="outline"
           roughness={0.3}
           boil={0.1}
           className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg"
