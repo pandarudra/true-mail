@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { Robot } from "@phosphor-icons/react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
+import { IconButton } from "@/components/ui/IconButton";
+import { readError } from "@/lib/api-error";
 import { useTaskStore, type Priority } from "@/lib/stores/task-store";
 
 function isoAtLocalMidnight(daysFromNow: number): string {
@@ -46,6 +49,9 @@ function NewTaskForm({ defaultListId, onClose }: { defaultListId?: string; onClo
   const [listId, setListId] = useState(defaultListId ?? "");
   const [priority, setPriority] = useState<Priority>("NORMAL");
   const [dueAt, setDueAt] = useState<string | null>(null);
+  const [dueHasTime, setDueHasTime] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
   const selectedListId = listId || taskLists[0]?.id || "";
 
   async function submit() {
@@ -55,21 +61,51 @@ function NewTaskForm({ defaultListId, onClose }: { defaultListId?: string; onClo
       listId: selectedListId || undefined,
       priority,
       dueAt,
-      dueHasTime: false,
+      dueHasTime,
     });
     onClose();
   }
 
+  // Prefills the form from a typed sentence — never auto-creates the task,
+  // so the user still reviews and submits it themselves (same "review
+  // before commit" posture as the AI reply drafts).
+  async function parseWithAi() {
+    if (!title.trim()) return;
+    setParsing(true);
+    setParseError(null);
+    const res = await fetch("/api/ai/parse-task", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: title.trim() }),
+    });
+    setParsing(false);
+    if (!res.ok) {
+      setParseError(await readError(res));
+      return;
+    }
+    const parsed = await res.json();
+    setTitle(parsed.title);
+    setDueAt(parsed.dueAt);
+    setDueHasTime(!!parsed.dueHasTime);
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      <Input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-        placeholder="Task title"
-        autoFocus
-      />
+      <div className="flex items-center gap-1.5">
+        <Input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          placeholder='Task title, or describe it — "send proposal tomorrow at 6pm"'
+          autoFocus
+          className="min-w-0 flex-1"
+        />
+        <IconButton label="Parse with AI" onClick={parseWithAi} disabled={parsing || !title.trim()}>
+          <Robot size={16} />
+        </IconButton>
+      </div>
+      {parseError && <p className="text-xs text-red-600">{parseError}</p>}
       <div className="flex flex-wrap gap-1.5">
         {[
           { label: "Today", value: isoAtLocalMidnight(0) },
@@ -80,7 +116,10 @@ function NewTaskForm({ defaultListId, onClose }: { defaultListId?: string; onClo
           <button
             key={opt.label}
             type="button"
-            onClick={() => setDueAt(opt.value)}
+            onClick={() => {
+              setDueAt(opt.value);
+              setDueHasTime(false);
+            }}
             className={`rounded-full border px-3 py-1 text-xs ${
               dueAt === opt.value
                 ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10"
@@ -90,6 +129,11 @@ function NewTaskForm({ defaultListId, onClose }: { defaultListId?: string; onClo
             {opt.label}
           </button>
         ))}
+        {dueAt && dueHasTime && (
+          <span className="rounded-full border border-brand-500 bg-brand-50 px-3 py-1 text-xs text-brand-700 dark:bg-brand-500/10">
+            {new Date(dueAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+          </span>
+        )}
       </div>
       <div className="flex flex-wrap gap-2">
         <Select aria-label="Priority" value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>

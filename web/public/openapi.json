@@ -1771,6 +1771,79 @@
         }
       }
     },
+    "/api/ai/extract-actions": {
+      "post": {
+        "tags": ["AI"],
+        "summary": "Extract concrete action items from a single email",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["emailId"],
+                "properties": { "emailId": { "type": "string", "format": "uuid" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "actions": { "type": "array", "items": { "type": "string" } } }
+                }
+              }
+            }
+          },
+          "400": { "description": "emailId is required", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "502": { "description": "AI is temporarily unavailable", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/ai/parse-task": {
+      "post": {
+        "tags": ["AI"],
+        "summary": "Parse a freeform sentence into a task title and due date",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["text"],
+                "properties": { "text": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "title": { "type": "string" },
+                    "dueAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "dueHasTime": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "text is required", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "502": { "description": "AI is temporarily unavailable", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
     "/api/ai/reply": {
       "post": {
         "tags": ["AI"],

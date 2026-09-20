@@ -26,6 +26,7 @@ import { DrawablyBadge, DrawablyButton, DrawablyDivider } from "drawably/react";
 import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/Button";
 import { SummaryCard } from "@/components/ai/SummaryCard";
+import { ActionItemsCard } from "@/components/ai/ActionItemsCard";
 import { AiReplyBar } from "@/components/ai/AiReplyBar";
 import { AddToTaskDialog } from "@/components/tasks/AddToTaskDialog";
 import { FOLDERS } from "@/lib/mail-folders";
@@ -201,6 +202,7 @@ export function ReadingPane({ email }: { email: Email }) {
         )}
         <div className="mb-6" />
         <SummaryCard emailId={email.id} />
+        <ActionItemsCard emailId={email.id} />
         {safeHtml ? (
           <div dangerouslySetInnerHTML={{ __html: safeHtml }} />
         ) : (
