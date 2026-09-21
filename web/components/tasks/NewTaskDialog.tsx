@@ -76,7 +76,7 @@ function NewTaskForm({ defaultListId, onClose }: { defaultListId?: string; onClo
     const res = await fetch("/api/ai/parse-task", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: title.trim() }),
+      body: JSON.stringify({ text: title.trim(), timezoneOffsetMinutes: new Date().getTimezoneOffset() }),
     });
     setParsing(false);
     if (!res.ok) {

@@ -15,9 +15,10 @@ TrueMail is a self-hosted-friendly email client that runs on **your own domain**
 - **Drafts that autosave** — debounced autosave while composing, resume any draft later
 - **Reply, reply-all, and forward** — direction-aware recipients and quoted replies
 - **Attachments** — uploaded via Cloudinary for outgoing mail; incoming attachments are fetched from Resend on demand (no duplicate storage)
+- **Tasks** — a task manager built into the inbox: due dates, priorities, lists, subtasks, and Today/Upcoming/Overdue/Completed views. Add a task straight from an email via the reading pane, and it stays linked back to the email it came from
 - **Dark mode**, a hand-drawn UI (via [Drawably](https://www.npmjs.com/package/drawably)), and a profile with a custom avatar
-- **Responsive** — the inbox, compose, settings, and landing page all adapt down to phone-sized screens
-- **AI assist** (optional, needs `NVIDIA_API_KEY`) — summarize an open email, draft a reply by intent (accept/decline/ask for details/thank/follow up/custom), or ask your inbox a question and jump straight to the cited emails. Every call is user-triggered, nothing runs in the background
+- **Responsive** — the inbox, compose, settings, tasks, and landing page all adapt down to phone-sized screens
+- **AI assist** (optional, needs `NVIDIA_API_KEY`) — summarize an open email, draft a reply by intent (accept/decline/ask for details/thank/follow up/custom), ask your inbox a question and jump straight to the cited emails, extract an email's action items straight into one-click tasks, or turn a plain-language sentence ("follow up with John tomorrow at 6pm") into a task with the right title and due date. Every call is user-triggered, nothing runs in the background
 
 ## Tech stack
 

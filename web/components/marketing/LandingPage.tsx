@@ -3,11 +3,13 @@
 import {
   ArrowBendUpLeft,
   At,
+  CheckSquare,
   EnvelopeSimple,
   Globe,
   LockKey,
   Moon,
   PlugsConnected,
+  Robot,
   ShieldCheck,
 } from "@phosphor-icons/react";
 import { DrawablyBadge, DrawablyDivider } from "drawably/react";
@@ -40,6 +42,16 @@ const FEATURES = [
     icon: At,
     title: "Multiple mailboxes",
     body: "Run as many addresses as you need on one domain, with a primary you can switch anytime.",
+  },
+  {
+    icon: CheckSquare,
+    title: "Tasks, right where email lives",
+    body: "Turn any email into a task with one click. Tasks stay linked back to the email they came from, with due dates, priorities, and lists.",
+  },
+  {
+    icon: Robot,
+    title: "AI that acts on your inbox",
+    body: "Summarize an email, extract its action items straight into tasks, or type a task in plain English and let AI fill in the title and due date.",
   },
   {
     icon: Moon,
