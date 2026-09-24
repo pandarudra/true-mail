@@ -15,10 +15,11 @@ TrueMail is a self-hosted-friendly email client that runs on **your own domain**
 - **Drafts that autosave** — debounced autosave while composing, resume any draft later
 - **Reply, reply-all, and forward** — direction-aware recipients and quoted replies
 - **Attachments** — uploaded via Cloudinary for outgoing mail; incoming attachments are fetched from Resend on demand (no duplicate storage)
-- **Tasks** — a task manager built into the inbox: due dates, priorities, lists, subtasks, and Today/Upcoming/Overdue/Completed views. Add a task straight from an email via the reading pane, and it stays linked back to the email it came from
+- **Tasks** — a task manager built into the inbox: due dates (quick presets or a custom date picker), priorities, lists, subtasks, and Today/Upcoming/Overdue/Completed views. Add a task straight from an email via the reading pane, and it stays linked back to the email it came from
+- **Calendar** — a real month view with today auto-highlighted, national and regional holidays for whichever country you pick (via [Calendarific](https://calendarific.com), cached server-side), and tasks shown and manageable right on their due date
 - **Dark mode**, a hand-drawn UI (via [Drawably](https://www.npmjs.com/package/drawably)), and a profile with a custom avatar
-- **Responsive** — the inbox, compose, settings, tasks, and landing page all adapt down to phone-sized screens
-- **AI assist** (optional, needs `NVIDIA_API_KEY`) — summarize an open email, draft a reply by intent (accept/decline/ask for details/thank/follow up/custom), ask your inbox a question and jump straight to the cited emails, extract an email's action items straight into one-click tasks, or turn a plain-language sentence ("follow up with John tomorrow at 6pm") into a task with the right title and due date. Every call is user-triggered, nothing runs in the background
+- **Responsive** — the inbox, compose, settings, tasks, calendar, and landing page all adapt down to phone-sized screens
+- **AI assist** (optional, needs `NVIDIA_API_KEY`) — summarize an open email, draft a reply by intent (accept/decline/ask for details/thank/follow up/custom), ask your inbox a question and jump straight to the cited emails, extract an email's action items straight into one-click tasks, turn a plain-language sentence ("follow up with John tomorrow at 6pm") into a task with the right title and due date, or quietly check an open email in the background for a schedulable event (an interview, a meeting) and offer to add it to your calendar. Every call is user-triggered except that last background check; nothing else runs without a click
 
 ## Tech stack
 
@@ -27,6 +28,7 @@ TrueMail is a self-hosted-friendly email client that runs on **your own domain**
 - [better-auth](https://www.better-auth.com) — email/password + Google OAuth
 - [Resend](https://resend.com) — sending, receiving (webhooks), and attachment storage for inbound mail
 - [Cloudinary](https://cloudinary.com) (via `next-cloudinary`) — attachment storage for outgoing mail
+- [Calendarific](https://calendarific.com) — holiday data for the calendar, cached in Postgres
 - Tailwind CSS v4, [Drawably](https://www.npmjs.com/package/drawably) for the hand-drawn UI chrome
 - [Vitest](https://vitest.dev) for unit tests
 
@@ -65,6 +67,7 @@ Fill in `.env`:
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — optional, for Google sign-in
 - `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` / `NEXT_PUBLIC_CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` — optional, for attachments
 - `NVIDIA_API_KEY` — optional, for AI features (a free-tier key from [build.nvidia.com](https://build.nvidia.com))
+- `CALENDARFIC_API_KEY` — optional, for the calendar's holiday data (a free-tier key from [calendarific.com](https://calendarific.com); the env var is spelled `CALENDARFIC`, not `CALENDARIFIC` — matches the name already used in `lib/holidays/calendarific.ts`)
 
 Register your own Resend OAuth client (one-time, re-run whenever `APP_URL` changes):
 
@@ -100,7 +103,7 @@ Run these from `web/`:
 ```
 web/
 ├─ app/            # Next.js App Router — pages and API routes
-│  ├─ (app)/       # Authenticated app: inbox, compose, settings, onboarding
+│  ├─ (app)/       # Authenticated app: inbox, compose, tasks, calendar, settings, onboarding
 │  └─ api/         # Route handlers
 ├─ components/      # React components (UI primitives under components/ui/)
 ├─ lib/             # Server/client helpers — auth, Resend wrappers, crypto, etc.

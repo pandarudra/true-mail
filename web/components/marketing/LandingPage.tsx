@@ -3,6 +3,7 @@
 import {
   ArrowBendUpLeft,
   At,
+  CalendarBlank,
   CheckSquare,
   EnvelopeSimple,
   Globe,
@@ -52,6 +53,11 @@ const FEATURES = [
     icon: Robot,
     title: "AI that acts on your inbox",
     body: "Summarize an email, extract its action items straight into tasks, or type a task in plain English and let AI fill in the title and due date.",
+  },
+  {
+    icon: CalendarBlank,
+    title: "A calendar that pays attention",
+    body: "Real national and regional holidays for whichever country you pick, tasks that show up on the day they're due, and a background check that quietly finds schedulable events in your email and offers to add them — no click required.",
   },
   {
     icon: Moon,
