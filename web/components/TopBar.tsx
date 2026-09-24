@@ -11,6 +11,8 @@ import { AdvancedSearchModal } from "@/components/AdvancedSearchModal";
 import { TaskSearchBar } from "@/components/tasks/TaskSearchBar";
 import { AdvancedTaskSearchModal } from "@/components/tasks/AdvancedTaskSearchModal";
 import { IconButton } from "@/components/ui/IconButton";
+import { Select } from "@/components/ui/Select";
+import { MONTHS } from "@/components/cal/types";
 import { authClient } from "@/lib/auth-client";
 
 type User = { name: string; email: string; image?: string | null };
@@ -19,16 +21,28 @@ function initial(user: User): string {
   return (user.name || user.email).charAt(0).toUpperCase();
 }
 
+const CURRENT_YEAR = new Date().getFullYear();
+const CAL_YEARS = Array.from({ length: 21 }, (_, i) => CURRENT_YEAR - 10 + i);
+
 export function TopBar({
   user,
   onMenuClick,
+  calMonthIndex,
+  calYear,
+  onCalMonthChange,
+  onCalYearChange,
 }: {
   user: User;
   onMenuClick?: () => void;
+  calMonthIndex?: number;
+  calYear?: number;
+  onCalMonthChange?: (monthIndex: number) => void;
+  onCalYearChange?: (year: number) => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const onTasks = pathname === "/tasks";
+  const onCal = pathname === "/cal";
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
 
@@ -49,24 +63,55 @@ export function TopBar({
           <List size={20} />
         </button>
         <BrandMark className="hidden sm:flex" />
-        {onTasks ? <TaskSearchBar /> : <AskInbox />}
-        <IconButton
-          label="Search options"
-          onClick={() => setSearchModalOpen(true)}
-        >
-          <FunnelSimple size={16} />
-        </IconButton>
-        {onTasks ? (
-          <AdvancedTaskSearchModal
-            open={searchModalOpen}
-            onClose={() => setSearchModalOpen(false)}
-          />
-        ) : (
-          <AdvancedSearchModal
-            open={searchModalOpen}
-            onClose={() => setSearchModalOpen(false)}
-          />
+        {onTasks ? <TaskSearchBar /> : onCal ? <div className="min-w-0 flex-1" /> : <AskInbox />}
+        {onCal && calMonthIndex !== undefined && calYear !== undefined && (
+          <div className="hidden shrink-0 gap-1.5 sm:flex">
+            <Select
+              aria-label="Month"
+              value={calMonthIndex}
+              onChange={(e) => onCalMonthChange?.(Number(e.target.value))}
+              className="w-auto"
+            >
+              {MONTHS.map((m, i) => (
+                <option key={m} value={i}>
+                  {m}
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label="Year"
+              value={calYear}
+              onChange={(e) => onCalYearChange?.(Number(e.target.value))}
+              className="w-auto"
+            >
+              {CAL_YEARS.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </Select>
+          </div>
         )}
+        {!onCal && (
+          <IconButton
+            label="Search options"
+            onClick={() => setSearchModalOpen(true)}
+          >
+            <FunnelSimple size={16} />
+          </IconButton>
+        )}
+        {!onCal &&
+          (onTasks ? (
+            <AdvancedTaskSearchModal
+              open={searchModalOpen}
+              onClose={() => setSearchModalOpen(false)}
+            />
+          ) : (
+            <AdvancedSearchModal
+              open={searchModalOpen}
+              onClose={() => setSearchModalOpen(false)}
+            />
+          ))}
         <ThemeToggle />
         <div className="relative shrink-0">
           <button

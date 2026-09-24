@@ -27,6 +27,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/Button";
 import { SummaryCard } from "@/components/ai/SummaryCard";
 import { ActionItemsCard } from "@/components/ai/ActionItemsCard";
+import { PossibleEventCard } from "@/components/ai/PossibleEventCard";
 import { AiReplyBar } from "@/components/ai/AiReplyBar";
 import { AddToTaskDialog } from "@/components/tasks/AddToTaskDialog";
 import { FOLDERS } from "@/lib/mail-folders";
@@ -80,13 +81,36 @@ export function ReadingPane({ email }: { email: Email }) {
   const prevEmail = position > 0 ? folderEmails[position - 1] : null;
   const nextEmail = position >= 0 && position < folderEmails.length - 1 ? folderEmails[position + 1] : null;
 
+  const pagination = position >= 0 && (
+    <>
+      <span className="whitespace-nowrap font-mono text-xs text-text-secondary">
+        {position + 1} of {folderEmails.length}
+      </span>
+      <IconButton label="Older" disabled={!prevEmail} onClick={() => prevEmail && void selectEmail(prevEmail.id)}>
+        <CaretLeft size={16} />
+      </IconButton>
+      <IconButton label="Newer" disabled={!nextEmail} onClick={() => nextEmail && void selectEmail(nextEmail.id)}>
+        <CaretRight size={16} />
+      </IconButton>
+    </>
+  );
+
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
-      <div className="flex flex-wrap items-center gap-2 px-3 py-3 sm:px-4">
-        <IconButton label="Back to list" onClick={closeReadingPane}>
-          <ArrowLeft size={18} />
-        </IconButton>
-        <div className="flex flex-1 justify-end gap-1">
+      {/* Back + pagination pair off as one row on mobile (both are "move
+          through the list" controls); the action icons get their own row
+          below, with overflow-x-auto as a safety net instead of the wrap
+          they used to fall into (icons tight on row 1, pagination stranded,
+          left-aligned, on an otherwise-empty row 2). At sm+ everything
+          returns to one row, unchanged from before. */}
+      <div className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:px-4">
+        <div className="flex items-center justify-between gap-2 sm:justify-start">
+          <IconButton label="Back to list" onClick={closeReadingPane}>
+            <ArrowLeft size={18} />
+          </IconButton>
+          {pagination && <div className="flex shrink-0 items-center gap-2 sm:hidden">{pagination}</div>}
+        </div>
+        <div className="flex items-center gap-1 overflow-x-auto sm:flex-1 sm:justify-end sm:overflow-visible">
           <ActionButton
             active={email.starred}
             activeStroke="#f59e0b"
@@ -126,27 +150,7 @@ export function ReadingPane({ email }: { email: Email }) {
             <TrashSimple size={16} />
           </ActionButton>
         </div>
-        {position >= 0 && (
-          <div className="flex shrink-0 items-center gap-2 pl-1">
-            <span className="whitespace-nowrap font-mono text-xs text-text-secondary">
-              {position + 1} of {folderEmails.length}
-            </span>
-            <IconButton
-              label="Older"
-              disabled={!prevEmail}
-              onClick={() => prevEmail && void selectEmail(prevEmail.id)}
-            >
-              <CaretLeft size={16} />
-            </IconButton>
-            <IconButton
-              label="Newer"
-              disabled={!nextEmail}
-              onClick={() => nextEmail && void selectEmail(nextEmail.id)}
-            >
-              <CaretRight size={16} />
-            </IconButton>
-          </div>
-        )}
+        {pagination && <div className="hidden shrink-0 items-center gap-2 pl-1 sm:flex">{pagination}</div>}
       </div>
       <DrawablyDivider roughness={0.3} boil={0.1} />
       <div className="flex-1 overflow-y-auto p-4 sm:p-8">
@@ -201,8 +205,7 @@ export function ReadingPane({ email }: { email: Email }) {
           </div>
         )}
         <div className="mb-6" />
-        <SummaryCard emailId={email.id} />
-        <ActionItemsCard emailId={email.id} />
+        <PossibleEventCard key={email.id} emailId={email.id} />
         {safeHtml ? (
           <div dangerouslySetInnerHTML={{ __html: safeHtml }} />
         ) : (
@@ -227,6 +230,8 @@ export function ReadingPane({ email }: { email: Email }) {
             ))}
           </ul>
         )}
+        <ActionItemsCard emailId={email.id} />
+        <SummaryCard emailId={email.id} />
         {!isTrashed && (
           <div className="mt-8 border-t border-border pt-6">
             <div className="flex flex-wrap gap-2">

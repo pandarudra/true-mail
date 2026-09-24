@@ -8,12 +8,21 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { readError } from "@/lib/api-error";
+import { toISODate } from "@/lib/cal";
 import { useTaskStore, type Priority } from "@/lib/stores/task-store";
 
 function isoAtLocalMidnight(daysFromNow: number): string {
   const d = new Date();
   d.setDate(d.getDate() + daysFromNow);
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
+}
+
+// From an <input type="date"> value ("YYYY-MM-DD") to the same local-midnight
+// ISO string isoAtLocalMidnight produces, so both compare equal for the
+// pill's active-state check.
+function isoFromDateInput(value: string): string {
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y, m - 1, d).toISOString();
 }
 
 const PRIORITY_LABEL: Record<Priority, string> = {
@@ -27,29 +36,40 @@ export function NewTaskDialog({
   open,
   onClose,
   defaultListId,
+  defaultDueAt,
 }: {
   open: boolean;
   onClose: () => void;
   defaultListId?: string;
+  defaultDueAt?: string | null;
 }) {
   return (
     <Dialog open={open} onClose={onClose} title="New task">
       {/* Rendering the form only while open remounts it fresh each time,
           so fields reset without needing an effect to sync them. */}
-      {open && <NewTaskForm defaultListId={defaultListId} onClose={onClose} />}
+      {open && <NewTaskForm defaultListId={defaultListId} defaultDueAt={defaultDueAt} onClose={onClose} />}
     </Dialog>
   );
 }
 
-function NewTaskForm({ defaultListId, onClose }: { defaultListId?: string; onClose: () => void }) {
+function NewTaskForm({
+  defaultListId,
+  defaultDueAt,
+  onClose,
+}: {
+  defaultListId?: string;
+  defaultDueAt?: string | null;
+  onClose: () => void;
+}) {
   const taskLists = useTaskStore((s) => s.taskLists);
   const createTask = useTaskStore((s) => s.createTask);
 
   const [title, setTitle] = useState("");
   const [listId, setListId] = useState(defaultListId ?? "");
   const [priority, setPriority] = useState<Priority>("NORMAL");
-  const [dueAt, setDueAt] = useState<string | null>(null);
+  const [dueAt, setDueAt] = useState<string | null>(defaultDueAt ?? null);
   const [dueHasTime, setDueHasTime] = useState(false);
+  const [customDate, setCustomDate] = useState(defaultDueAt ? toISODate(new Date(defaultDueAt)) : "");
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const selectedListId = listId || taskLists[0]?.id || "";
@@ -87,6 +107,7 @@ function NewTaskForm({ defaultListId, onClose }: { defaultListId?: string; onClo
     setTitle(parsed.title);
     setDueAt(parsed.dueAt);
     setDueHasTime(!!parsed.dueHasTime);
+    setCustomDate("");
   }
 
   return (
@@ -119,6 +140,7 @@ function NewTaskForm({ defaultListId, onClose }: { defaultListId?: string; onClo
             onClick={() => {
               setDueAt(opt.value);
               setDueHasTime(false);
+              setCustomDate("");
             }}
             className={`rounded-full border px-3 py-1 text-xs ${
               dueAt === opt.value
@@ -129,6 +151,21 @@ function NewTaskForm({ defaultListId, onClose }: { defaultListId?: string; onClo
             {opt.label}
           </button>
         ))}
+        <Input
+          type="date"
+          aria-label="Custom due date"
+          value={customDate}
+          onChange={(e) => {
+            const value = e.target.value;
+            setCustomDate(value);
+            if (!value) return;
+            setDueAt(isoFromDateInput(value));
+            setDueHasTime(false);
+          }}
+          className={`w-auto px-3 py-1 text-xs ${
+            customDate && dueAt === isoFromDateInput(customDate) ? "ring-2 ring-brand-500" : ""
+          }`}
+        />
         {dueAt && dueHasTime && (
           <span className="rounded-full border border-brand-500 bg-brand-50 px-3 py-1 text-xs text-brand-700 dark:bg-brand-500/10">
             {new Date(dueAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}

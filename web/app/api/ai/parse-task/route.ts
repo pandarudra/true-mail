@@ -1,28 +1,9 @@
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/session";
 import { chatJSON } from "@/lib/ai/nvidia";
+import { hasExplicitTime, localNaiveToUtcIso } from "@/lib/ai/local-datetime";
 
 type ParseTaskResult = { title: string; dueAt: string | null };
-
-// The model was asked to also return a "dueHasTime" boolean directly, but it
-// unreliably said true even when it had defaulted an implied date to
-// midnight (no time was actually stated) — deriving it from the timestamp's
-// own shape instead is simpler and doesn't depend on the model getting a
-// second field right. Trade-off: a task genuinely due at literal midnight
-// reads as date-only, which is the rarer case.
-function hasExplicitTime(naiveLocalDueAt: string): boolean {
-  return !/T00:00:00(\.000)?$/.test(naiveLocalDueAt);
-}
-
-// The model reliably reasons about wall-clock local time ("tomorrow at
-// 6pm") but not about converting that into a UTC offset — asking it to do
-// both in one step silently drops the conversion. So it only ever returns a
-// naive local datetime (no Z), and the UTC conversion is exact arithmetic
-// here instead of something an LLM has to get right.
-function localNaiveToUtcIso(naiveLocalDueAt: string, timezoneOffsetMinutes: number): string {
-  const utcMs = Date.parse(`${naiveLocalDueAt}Z`) + timezoneOffsetMinutes * 60000;
-  return new Date(utcMs).toISOString();
-}
 
 export async function POST(req: Request) {
   const userId = await getUserId(req.headers);

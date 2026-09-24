@@ -18,6 +18,11 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // Holiday calendar location — set once via the "set your location" prompt
+  // on first calendar visit, editable afterwards.
+  holidayCountry String?
+  holidayRegion  String?
+
   resendConnection ResendConnection?
   domains          Domain[]
   mailboxes        Mailbox[]
@@ -211,6 +216,19 @@ model Account {
 
   @@index([userId])
   @@map("account")
+}
+
+model HolidayCache {
+  id        String   @id @default(uuid())
+  country   String
+  region    String   @default("")
+  year      Int
+  language  String   @default("en")
+  data      Json
+  fetchedAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@unique([country, region, year, language])
 }
 
 model Verification {

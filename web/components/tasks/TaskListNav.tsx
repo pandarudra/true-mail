@@ -16,8 +16,18 @@ import { Dialog } from "@/components/ui/Dialog";
 import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
 import { useTaskStore, type SmartView } from "@/lib/stores/task-store";
+import { DrawablyButton } from "drawably/react";
 
-const LIST_COLORS = ["#ef4444", "#f59e0b", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"];
+const LIST_COLORS = [
+  "#ef4444",
+  "#f59e0b",
+  "#eab308",
+  "#22c55e",
+  "#06b6d4",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+];
 
 const SMART_VIEWS: Array<{ id: SmartView; label: string; icon: typeof Sun }> = [
   { id: "today", label: "Today", icon: Sun },
@@ -48,36 +58,52 @@ export function TaskListNav() {
           list from here is intentionally left out: it's a low-frequency
           action, and the icons that trigger it rely on :hover (desktop
           only) anyway, so it's reached from the lg+ layout instead. */}
-      <nav className="flex shrink-0 gap-2 overflow-x-auto border-b border-border p-3 lg:hidden" aria-label="Views and lists">
+      <nav
+        className="flex shrink-0 gap-2 overflow-x-auto border-b border-border p-3 lg:hidden"
+        aria-label="Views and lists"
+      >
         {SMART_VIEWS.map(({ id, label, icon: Icon }) => {
           const active = activeView.kind === "smart" && activeView.smart === id;
           return (
-            <button
+            <DrawablyButton
+              roughness={0.2}
+              boil={0.9}
               key={id}
               type="button"
               onClick={() => selectSmartView(id)}
+              variant={active ? "solid" : "outline"}
               className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors ${
-                active ? "bg-brand-500 text-white" : "bg-surface-subtle text-text-secondary"
+                active
+                  ? "bg-brand-500 text-white"
+                  : "bg-surface-subtle text-text-secondary"
               }`}
             >
               <Icon size={15} weight={active ? "fill" : "regular"} />
               {label}
-            </button>
+            </DrawablyButton>
           );
         })}
-        {taskLists.length > 0 && <span className="my-auto h-5 w-px shrink-0 bg-border" />}
+        {taskLists.length > 0 && (
+          <span className="my-auto h-5 w-px shrink-0 bg-border" />
+        )}
         {taskLists.map((list) => {
-          const active = activeView.kind === "list" && activeView.listId === list.id;
+          const active =
+            activeView.kind === "list" && activeView.listId === list.id;
           return (
             <button
               key={list.id}
               type="button"
               onClick={() => selectList(list.id)}
               className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors ${
-                active ? "border-foreground text-foreground" : "border-border text-text-secondary"
+                active
+                  ? "border-foreground text-foreground"
+                  : "border-border text-text-secondary"
               }`}
             >
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: list.color }} />
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: list.color }}
+              />
               {list.name}
             </button>
           );
@@ -95,7 +121,8 @@ export function TaskListNav() {
       <aside className="hidden w-56 shrink-0 flex-col overflow-y-auto border-r border-border p-4 lg:flex">
         <nav className="flex flex-col gap-1">
           {SMART_VIEWS.map(({ id, label, icon: Icon }) => {
-            const active = activeView.kind === "smart" && activeView.smart === id;
+            const active =
+              activeView.kind === "smart" && activeView.smart === id;
             return (
               <button
                 key={id}
@@ -129,11 +156,18 @@ export function TaskListNav() {
                     : "text-text-secondary hover:bg-surface-subtle"
                 }`}
               >
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: list.color }} />
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: list.color }}
+                />
                 <span className="flex-1 truncate">{list.name}</span>
               </button>
               <div className="hidden shrink-0 gap-0.5 group-hover:flex">
-                <IconButton label={`Rename ${list.name}`} onClick={() => setEditingId(list.id)} className="h-6 w-6">
+                <IconButton
+                  label={`Rename ${list.name}`}
+                  onClick={() => setEditingId(list.id)}
+                  className="h-6 w-6"
+                >
                   <PencilSimpleLine size={12} />
                 </IconButton>
                 {!list.isDefault && (
@@ -161,7 +195,11 @@ export function TaskListNav() {
         </button>
       </aside>
 
-      <Dialog open={editing !== null} onClose={() => setEditingId(null)} title="Rename list">
+      <Dialog
+        open={editing !== null}
+        onClose={() => setEditingId(null)}
+        title="Rename list"
+      >
         {editing && (
           <ListForm
             initialName={editing.name}
@@ -174,7 +212,11 @@ export function TaskListNav() {
           />
         )}
       </Dialog>
-      <Dialog open={creating} onClose={() => setCreating(false)} title="Create list">
+      <Dialog
+        open={creating}
+        onClose={() => setCreating(false)}
+        title="Create list"
+      >
         <ListForm
           onSubmit={async (name, color) => {
             const { error } = await createList(name, color);
@@ -236,7 +278,12 @@ function ListForm({
           {submitLabel}
         </Button>
         {onCancel && (
-          <Button type="button" variant="secondary" onClick={onCancel} className="w-fit">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onCancel}
+            className="w-fit"
+          >
             Cancel
           </Button>
         )}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Archive,
+  CalendarBlank,
   CheckSquare,
   EnvelopeSimple,
   Flag,
@@ -132,6 +133,18 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
             >
               <CheckSquare size={18} weight={pathname === "/tasks" ? "fill" : "regular"} />
               Tasks
+            </a>
+            <a
+              href="/cal"
+              onClick={onClose}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                pathname === "/cal"
+                  ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+                  : "text-text-secondary hover:bg-surface-subtle"
+              }`}
+            >
+              <CalendarBlank size={18} weight={pathname === "/cal" ? "fill" : "regular"} />
+              Calendar
             </a>
           </nav>
         </div>

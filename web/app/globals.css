@@ -92,6 +92,15 @@ body {
   --drawably-stroke: var(--color-brand-300);
 }
 
+/* --drawably-paper backs the customisable-select popover (select::picker(select))
+   but also sets .drawably-button--solid's on-fill text color — can't repoint it
+   globally without breaking that button's contrast, so scope this to selects
+   only. Unthemed it's a hardcoded #fff, so in dark mode the popover stayed white
+   while its text (inherited from text-foreground) went near-white too. */
+.drawably-select {
+  --drawably-paper: var(--color-surface);
+}
+
 /* drawably defaults to Inter; keep it on the app's own sans (Plus Jakarta Sans) */
 .drawably-host,
 .drawably-button {
