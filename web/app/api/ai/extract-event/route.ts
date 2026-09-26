@@ -26,6 +26,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
+  // Already added to the calendar (as a Task) from this email — don't
+  // re-detect and resurface the same suggestion.
+  const alreadyAdded = await prisma.task.findFirst({ where: { sourceEmailId: emailId, userId } });
+  if (alreadyAdded) {
+    return NextResponse.json({ event: null });
+  }
+
   // Same local-time framing as parse-task: the model reasons in the user's
   // own wall-clock time, not server/UTC time.
   const localNow = new Date(Date.now() - timezoneOffsetMinutes * 60000);

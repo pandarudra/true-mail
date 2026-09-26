@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/session";
-import { getOrCreateDefaultTaskList, TASK_INCLUDE } from "@/lib/tasks";
-
-const PRIORITIES = new Set(["LOW", "NORMAL", "HIGH", "URGENT"]);
+import { createTaskForUser, TASK_INCLUDE } from "@/lib/tasks";
 
 export async function GET(req: Request) {
   const userId = await getUserId(req.headers);
@@ -29,41 +27,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "title is required" }, { status: 400 });
   }
 
-  let listId: string;
-  if (typeof body?.listId === "string") {
-    const list = await prisma.taskList.findFirst({ where: { id: body.listId, userId } });
-    if (!list) {
-      return NextResponse.json({ error: "list not found" }, { status: 404 });
-    }
-    listId = list.id;
-  } else {
-    listId = (await getOrCreateDefaultTaskList(userId)).id;
-  }
-
-  let sourceEmailId: string | null = null;
-  if (typeof body?.sourceEmailId === "string") {
-    const email = await prisma.email.findFirst({ where: { id: body.sourceEmailId, mailbox: { userId } } });
-    if (!email) {
-      return NextResponse.json({ error: "email not found" }, { status: 404 });
-    }
-    sourceEmailId = email.id;
-  }
-
-  const { _max } = await prisma.task.aggregate({ where: { listId }, _max: { position: true } });
-
-  const task = await prisma.task.create({
-    data: {
-      userId,
-      listId,
-      title,
-      description: typeof body?.description === "string" ? body.description : null,
-      dueAt: body?.dueAt ? new Date(body.dueAt) : null,
-      dueHasTime: !!body?.dueHasTime,
-      priority: PRIORITIES.has(body?.priority) ? body.priority : "NORMAL",
-      sourceEmailId,
-      position: (_max.position ?? -1) + 1,
-    },
-    include: TASK_INCLUDE,
+  const result = await createTaskForUser(userId, {
+    title,
+    listId: typeof body?.listId === "string" ? body.listId : undefined,
+    description: typeof body?.description === "string" ? body.description : null,
+    dueAt: body?.dueAt ?? null,
+    dueHasTime: !!body?.dueHasTime,
+    priority: body?.priority,
+    sourceEmailId: typeof body?.sourceEmailId === "string" ? body.sourceEmailId : null,
   });
-  return NextResponse.json({ task });
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
+  }
+  return NextResponse.json({ task: result.task });
 }

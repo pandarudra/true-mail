@@ -6,6 +6,7 @@ import { ArrowLeft, PaperPlaneTilt, Paperclip, X } from "@phosphor-icons/react";
 import { CldUploadWidget } from "next-cloudinary";
 import { DrawablyCard, DrawablyDivider, DrawablyTextarea } from "drawably/react";
 import { Button } from "@/components/ui/Button";
+import { useSmartBack } from "@/lib/use-smart-back";
 import type { ReplyMode } from "@/lib/reply";
 import {
   useComposeStore,
@@ -62,6 +63,7 @@ export function ComposeClient({
   initialDraft?: InitialDraft;
 }) {
   const router = useRouter();
+  const goBack = useSmartBack();
 
   // Reset the store for this specific compose session (new/reply/draft) —
   // done synchronously during render, keyed off `sessionKey`, so switching
@@ -156,7 +158,7 @@ export function ComposeClient({
       <DrawablyCard roughness={0.3} boil={0.1} className="w-full max-w-2xl bg-surface p-8">
         <button
           type="button"
-          onClick={() => router.push("/inbox")}
+          onClick={goBack}
           className="mb-6 flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-foreground"
         >
           <ArrowLeft size={16} />

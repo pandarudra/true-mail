@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Moirai_One } from "next/font/google";
+import { DrawablyHighlight } from "drawably/react";
 
 const moiraiOne = Moirai_One({ weight: "400", subsets: ["latin"] });
 
@@ -21,9 +22,12 @@ export function BrandMark({
       />
       <span
         className={`${moiraiOne.className} text-lg font-bold ${light ? "text-white" : "text-foreground"}`}
-        style={{ WebkitTextStroke: light ? "0.5px white" : "0.5px currentColor" }}
+        style={{
+          WebkitTextStroke: light ? "0.5px white" : "0.5px currentColor",
+        }}
       >
-        TrueMail
+        Tru
+        <DrawablyHighlight>eMail</DrawablyHighlight>
       </span>
     </div>
   );

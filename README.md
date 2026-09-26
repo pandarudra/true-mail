@@ -20,6 +20,7 @@ TrueMail is a self-hosted-friendly email client that runs on **your own domain**
 - **Dark mode**, a hand-drawn UI (via [Drawably](https://www.npmjs.com/package/drawably)), and a profile with a custom avatar
 - **Responsive** — the inbox, compose, settings, tasks, calendar, and landing page all adapt down to phone-sized screens
 - **AI assist** (optional, needs `NVIDIA_API_KEY`) — summarize an open email, draft a reply by intent (accept/decline/ask for details/thank/follow up/custom), ask your inbox a question and jump straight to the cited emails, extract an email's action items straight into one-click tasks, turn a plain-language sentence ("follow up with John tomorrow at 6pm") into a task with the right title and due date, or quietly check an open email in the background for a schedulable event (an interview, a meeting) and offer to add it to your calendar. Every call is user-triggered except that last background check; nothing else runs without a click
+- **Telegram assistant** (optional, needs a bot token) — connect a Telegram account from Settings and get your daily summary, task list, email summary, and calendar from a bot, on demand — plain-language requests ("give me my day", "create a task to call Rahul tomorrow") work alongside `/today`, `/tasks`, `/create`, etc. Every request resolves to your account through a secure link, never anything the message itself claims
 
 ## Tech stack
 
@@ -68,6 +69,7 @@ Fill in `.env`:
 - `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` / `NEXT_PUBLIC_CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` — optional, for attachments
 - `NVIDIA_API_KEY` — optional, for AI features (a free-tier key from [build.nvidia.com](https://build.nvidia.com))
 - `CALENDARFIC_API_KEY` — optional, for the calendar's holiday data (a free-tier key from [calendarific.com](https://calendarific.com); the env var is spelled `CALENDARFIC`, not `CALENDARIFIC` — matches the name already used in `lib/holidays/calendarific.ts`)
+- `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME` / `TELEGRAM_WEBHOOK_SECRET` — optional, for the Telegram assistant (see [Telegram bot setup](#telegram-bot-setup) below)
 
 Register your own Resend OAuth client (one-time, re-run whenever `APP_URL` changes):
 
@@ -84,6 +86,20 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Telegram bot setup
+
+Optional — the app works fully without it.
+
+1. Message [@BotFather](https://t.me/BotFather) on Telegram, `/newbot`, and copy the token it gives you.
+2. Set `TELEGRAM_BOT_TOKEN` (the token), `TELEGRAM_BOT_USERNAME` (without the `@`), and `TELEGRAM_WEBHOOK_SECRET` (any random string — generate one with `node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`) in `.env`.
+3. Make sure `RESEND_WEBHOOK_BASE_URL` (or `APP_URL` in production) points at a public HTTPS URL — the same tunnel already used for Resend webhooks works here too.
+4. Register the webhook and command menu:
+   ```bash
+   node scripts/register-telegram-webhook.mjs
+   ```
+5. Start TrueMail, sign in, go to **Settings → Telegram → Connect Telegram**, and tap the link it opens.
+6. Try `/today` in the chat.
+
 ### Scripts
 
 Run these from `web/`:
@@ -97,6 +113,7 @@ Run these from `web/`:
 | `npm run test`                                            | Run the Vitest suite                                                     |
 | `node scripts/register-resend-oauth-client.mjs <APP_URL>` | Register/update TrueMail's Resend OAuth client                           |
 | `node scripts/cleanup-orphaned-webhooks.mjs [--delete]`   | Report (or remove) Resend webhooks that don't match a current connection |
+| `node scripts/register-telegram-webhook.mjs`              | Register/update the Telegram bot's webhook and command menu              |
 
 ### Project structure
 

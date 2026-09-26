@@ -1,4 +1,3 @@
-
 generator client {
   provider     = "prisma-client"
   output       = "../generated/prisma"
@@ -23,30 +22,32 @@ model User {
   holidayCountry String?
   holidayRegion  String?
 
-  resendConnection ResendConnection?
-  domains          Domain[]
-  mailboxes        Mailbox[]
-  sessions         Session[]
-  accounts         Account[]
-  labels           Label[]
-  taskLists        TaskList[]
-  tasks            Task[]
+  resendConnection   ResendConnection?
+  domains            Domain[]
+  mailboxes          Mailbox[]
+  sessions           Session[]
+  accounts           Account[]
+  labels             Label[]
+  taskLists          TaskList[]
+  tasks              Task[]
+  telegramConnection TelegramConnection?
+  telegramLinkTokens TelegramLinkToken[]
 
   @@map("user")
 }
 
 model ResendConnection {
-  id                       String   @id @default(uuid())
-  userId                   String   @unique
-  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  encryptedAccessToken     String
-  encryptedRefreshToken    String
-  accessTokenExpiresAt     DateTime
-  scope                    String
-  webhookId                String
-  encryptedWebhookSecret   String
-  createdAt                DateTime @default(now())
-  domains                  Domain[]
+  id                     String   @id @default(uuid())
+  userId                 String   @unique
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  encryptedAccessToken   String
+  encryptedRefreshToken  String
+  accessTokenExpiresAt   DateTime
+  scope                  String
+  webhookId              String
+  encryptedWebhookSecret String
+  createdAt              DateTime @default(now())
+  domains                Domain[]
 }
 
 model Domain {
@@ -78,9 +79,9 @@ model Mailbox {
 }
 
 model Email {
-  id            String    @id @default(uuid())
+  id            String       @id @default(uuid())
   mailboxId     String
-  mailbox       Mailbox   @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  mailbox       Mailbox      @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
   resendEmailId String?
   direction     String
   from          String
@@ -90,34 +91,34 @@ model Email {
   text          String?
   html          String?
   status        String
-  read          Boolean   @default(false)
-  starred       Boolean   @default(false)
-  important     Boolean   @default(false)
-  archived      Boolean   @default(false)
-  spam          Boolean   @default(false)
+  read          Boolean      @default(false)
+  starred       Boolean      @default(false)
+  important     Boolean      @default(false)
+  archived      Boolean      @default(false)
+  spam          Boolean      @default(false)
   trashedAt     DateTime?
   sentAt        DateTime?
   receivedAt    DateTime?
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime     @default(now())
   labels        Label[]
   attachments   Attachment[]
   tasks         Task[]
 }
 
 model Attachment {
-  id          String  @id @default(uuid())
-  emailId     String
-  email       Email   @relation(fields: [emailId], references: [id], onDelete: Cascade)
-  filename    String
-  contentType String
-  size        Int?
+  id                 String   @id @default(uuid())
+  emailId            String
+  email              Email    @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  filename           String
+  contentType        String
+  size               Int?
   // Outbound (compose) attachments — hosted on Cloudinary.
   cloudinaryUrl      String?
   cloudinaryPublicId String?
   // Inbound (received) attachments — content stays with Resend; a fresh
   // signed download URL is fetched on demand via this id.
   resendAttachmentId String?
-  createdAt   DateTime @default(now())
+  createdAt          DateTime @default(now())
 }
 
 model Label {
@@ -180,6 +181,30 @@ model Subtask {
   title     String
   completed Boolean @default(false)
   position  Int     @default(0)
+}
+
+model TelegramConnection {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  telegramUserId    String   @unique
+  telegramChatId    String   @unique
+  username          String?
+  connectedAt       DateTime @default(now())
+  lastInteractionAt DateTime @default(now())
+}
+
+// Short-lived, single-use token used to link a Telegram account to a
+// TrueMail user — see lib/telegram/auth.ts. `usedAt` + `expiresAt` cover
+// the valid/expired/used/invalid states without a separate status field.
+model TelegramLinkToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 }
 
 model Session {

@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/session";
-import { emailBodyText } from "@/lib/email-text";
-import { chatJSON } from "@/lib/ai/nvidia";
-
-type SummaryResult = { summary: string; bullets: string[]; action: string | null };
+import { summarizeEmail } from "@/lib/ai/summarize-email";
 
 export async function POST(req: Request) {
   const userId = await getUserId(req.headers);
@@ -24,16 +21,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await chatJSON<SummaryResult>({
-      system:
-        "You summarize a single email. Respond with strict JSON only, no markdown, no code fences: " +
-        '{"summary": string, "bullets": string[], "action": string | null}. ' +
-        '"summary" is one short sentence. "bullets" are 2-5 short factual points from the email. ' +
-        '"action" is a single next step the recipient should take, or null if none.',
-      user: `From: ${email.from}\nDate: ${email.createdAt.toISOString()}\nSubject: ${email.subject}\n\n${emailBodyText(email)}`,
-      maxTokens: 300,
-      temperature: 0.2,
-    });
+    const result = await summarizeEmail(email);
     return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: "AI is temporarily unavailable. Please try again." }, { status: 502 });

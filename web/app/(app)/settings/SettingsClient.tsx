@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera } from "@phosphor-icons/react";
 import { CldUploadWidget } from "next-cloudinary";
 import { DrawablyCard, DrawablyDivider } from "drawably/react";
 import { Button } from "@/components/ui/Button";
 import { authClient } from "@/lib/auth-client";
+import { useSmartBack } from "@/lib/use-smart-back";
+import { TelegramSection } from "@/components/settings/TelegramSection";
 
 type User = { name: string; email: string; image: string | null };
 
@@ -25,7 +26,7 @@ function isUploadInfo(info: unknown): info is CloudinaryUploadInfo {
 }
 
 export function SettingsClient({ user: initialUser }: { user: User }) {
-  const router = useRouter();
+  const goBack = useSmartBack();
   const [image, setImage] = useState(initialUser.image);
   const [name, setName] = useState(initialUser.name);
   const [uploading, setUploading] = useState(false);
@@ -52,7 +53,7 @@ export function SettingsClient({ user: initialUser }: { user: User }) {
       <DrawablyCard roughness={0.3} boil={0.1} className="w-full max-w-lg bg-surface p-8">
         <button
           type="button"
-          onClick={() => router.push("/inbox")}
+          onClick={goBack}
           className="mb-6 flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-foreground"
         >
           <ArrowLeft size={16} />
@@ -122,6 +123,8 @@ export function SettingsClient({ user: initialUser }: { user: User }) {
             {status && <span className="text-sm text-text-secondary">{status}</span>}
           </div>
         </form>
+
+        <TelegramSection />
       </DrawablyCard>
     </main>
   );
