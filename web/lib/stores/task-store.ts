@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import { readError } from "@/lib/api-error";
-import { matchesTaskSearchQuery } from "@/lib/task-search-query";
+import { matchesTaskSearchQuery, parseTaskSearchQuery } from "@/lib/task-search-query";
 
 export type Priority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
 export type TaskList = { id: string; name: string; color: string; isDefault: boolean };
@@ -22,7 +22,10 @@ export type Task = {
   createdAt: string;
 };
 export type SmartView = "today" | "upcoming" | "overdue" | "completed" | "all";
-export type TaskView = { kind: "smart"; smart: SmartView } | { kind: "list"; listId: string };
+export type TaskView =
+  | { kind: "smart"; smart: SmartView }
+  | { kind: "list"; listId: string }
+  | { kind: "date"; date: string }; // "YYYY-MM-DD", local calendar date — the week-strip picker
 
 export type TaskState = {
   initialized: boolean;
@@ -38,6 +41,7 @@ export type TaskState = {
   fetchTasks: () => Promise<void>;
   selectSmartView: (view: SmartView) => void;
   selectList: (listId: string) => void;
+  selectDate: (date: string) => void;
   createList: (name: string, color: string) => Promise<{ error?: string }>;
   renameList: (id: string, name: string, color: string) => Promise<void>;
   deleteList: (id: string) => Promise<void>;
@@ -112,6 +116,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   selectList(listId) {
     set({ activeView: { kind: "list", listId } });
+  },
+
+  selectDate(date) {
+    set({ activeView: { kind: "date", date } });
   },
 
   async createList(name, color) {
@@ -266,30 +274,76 @@ function byDueDate(a: Task, b: Task): number {
   return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
 }
 
-function viewFilteredTasks(state: Pick<TaskState, "tasks" | "activeView">, now: Date): Task[] {
+// A view's own completed/active split (e.g. "Today" implicitly means
+// "incomplete tasks due today") is a *default*, not an absolute rule — an
+// explicit `status:` operator in the search query overrides it, otherwise
+// `status:completed` could never return anything on any view except
+// "Completed" itself, since the view would already have stripped completed
+// tasks out before the query got a chance to look for them.
+function matchesCompletionStatus(
+  completed: boolean,
+  statusOverride: "completed" | "active" | null,
+  viewDefault: boolean | null
+): boolean {
+  if (statusOverride === "completed") return completed;
+  if (statusOverride === "active") return !completed;
+  if (viewDefault === null) return true;
+  return completed === viewDefault;
+}
+
+function viewFilteredTasks(
+  state: Pick<TaskState, "tasks" | "activeView">,
+  now: Date,
+  statusOverride: "completed" | "active" | null
+): Task[] {
   const view = state.activeView;
   if (view.kind === "list") {
-    return state.tasks.filter((t) => t.listId === view.listId).sort((a, b) => a.position - b.position);
+    return state.tasks
+      .filter((t) => t.listId === view.listId && matchesCompletionStatus(t.completed, statusOverride, null))
+      .sort((a, b) => a.position - b.position);
+  }
+  if (view.kind === "date") {
+    // Parsed from its y/m/d parts rather than `new Date(view.date)` (which
+    // reads "YYYY-MM-DD" as UTC midnight) so the boundary lands on the
+    // viewer's actual local day, not a timezone-shifted one.
+    const [y, m, d] = view.date.split("-").map(Number);
+    const start = new Date(y, m - 1, d);
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    return state.tasks
+      .filter(
+        (t) =>
+          matchesCompletionStatus(t.completed, statusOverride, false) &&
+          t.dueAt !== null &&
+          new Date(t.dueAt) >= start &&
+          new Date(t.dueAt) < end
+      )
+      .sort(byDueDate);
   }
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
   switch (view.smart) {
     case "today":
       return state.tasks
-        .filter((t) => !t.completed && t.dueAt !== null && new Date(t.dueAt) < startOfTomorrow)
+        .filter(
+          (t) => matchesCompletionStatus(t.completed, statusOverride, false) && t.dueAt !== null && new Date(t.dueAt) < startOfTomorrow
+        )
         .sort(byDueDate);
     case "upcoming":
       return state.tasks
-        .filter((t) => !t.completed && t.dueAt !== null && new Date(t.dueAt) >= startOfTomorrow)
+        .filter(
+          (t) => matchesCompletionStatus(t.completed, statusOverride, false) && t.dueAt !== null && new Date(t.dueAt) >= startOfTomorrow
+        )
         .sort(byDueDate);
     case "overdue":
       return state.tasks
-        .filter((t) => !t.completed && t.dueAt !== null && new Date(t.dueAt) < startOfToday)
+        .filter(
+          (t) => matchesCompletionStatus(t.completed, statusOverride, false) && t.dueAt !== null && new Date(t.dueAt) < startOfToday
+        )
         .sort(byDueDate);
     case "completed":
-      return state.tasks.filter((t) => t.completed).sort(byDueDate);
+      return state.tasks.filter((t) => matchesCompletionStatus(t.completed, statusOverride, true)).sort(byDueDate);
     case "all":
-      return state.tasks.filter((t) => !t.completed).sort(byDueDate);
+      return state.tasks.filter((t) => matchesCompletionStatus(t.completed, statusOverride, false)).sort(byDueDate);
   }
 }
 
@@ -301,8 +355,11 @@ export function filteredTasks(
   state: Pick<TaskState, "tasks" | "activeView" | "query" | "taskLists">,
   now: Date = new Date()
 ): Task[] {
-  const viewFiltered = viewFilteredTasks(state, now);
   const q = state.query.trim();
+  const status = q ? parseTaskSearchQuery(q).status : "";
+  const statusOverride = status === "completed" ? "completed" : status === "active" ? "active" : null;
+
+  const viewFiltered = viewFilteredTasks(state, now, statusOverride);
   if (!q) return viewFiltered;
   return viewFiltered.filter((t) => matchesTaskSearchQuery(t, q, state.taskLists));
 }

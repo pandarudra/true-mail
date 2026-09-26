@@ -30,6 +30,7 @@ const NOW = new Date("2026-09-21T12:00:00Z");
 const startOfToday = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
 const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
 const hoursFrom = (base: Date, hours: number) => new Date(base.getTime() + hours * 60 * 60 * 1000).toISOString();
+const isoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 describe("filteredTasks", () => {
   it("today includes overdue and due-today tasks, excludes completed and no-due-date", () => {
@@ -104,6 +105,84 @@ describe("filteredTasks", () => {
       NOW
     );
     expect(result.map((t) => t.id)).toEqual(["1"]);
+  });
+
+  // Regression: every smart/date view except "completed" excludes completed
+  // tasks by default (that's the whole point of e.g. "Today"), which used to
+  // mean `status:completed` in the advanced search could never return
+  // anything unless you happened to already be on the Completed view — the
+  // view's own filtering stripped completed tasks out before the query ever
+  // got a look. An explicit status: operator must override the view default.
+  describe("status: overrides the active view's own completed/active default", () => {
+    const tasks = [
+      task({ id: "done-today", dueAt: hoursFrom(startOfToday, 2), completed: true }),
+      task({ id: "open-today", dueAt: hoursFrom(startOfToday, 2), completed: false }),
+    ];
+
+    it("status:completed surfaces completed tasks while on the 'today' smart view", () => {
+      const result = filteredTasks(viewState(tasks, { kind: "smart", smart: "today" }, { query: "status:completed" }), NOW);
+      expect(result.map((t) => t.id)).toEqual(["done-today"]);
+    });
+
+    it("status:completed surfaces completed tasks while on a date-picker view", () => {
+      const result = filteredTasks(viewState(tasks, { kind: "date", date: isoDate(NOW) }, { query: "status:completed" }), NOW);
+      expect(result.map((t) => t.id)).toEqual(["done-today"]);
+    });
+
+    it("status:completed surfaces completed tasks while on the 'all' smart view", () => {
+      const result = filteredTasks(viewState(tasks, { kind: "smart", smart: "all" }, { query: "status:completed" }), NOW);
+      expect(result.map((t) => t.id)).toEqual(["done-today"]);
+    });
+
+    it("status:active still excludes completed tasks on the 'completed' smart view", () => {
+      const result = filteredTasks(viewState(tasks, { kind: "smart", smart: "completed" }, { query: "status:active" }), NOW);
+      expect(result.map((t) => t.id)).toEqual(["open-today"]);
+    });
+
+    it("with no status: operator, each view keeps its own default (unchanged behavior)", () => {
+      const today = filteredTasks(viewState(tasks, { kind: "smart", smart: "today" }, {}), NOW);
+      expect(today.map((t) => t.id)).toEqual(["open-today"]);
+      const completed = filteredTasks(viewState(tasks, { kind: "smart", smart: "completed" }, {}), NOW);
+      expect(completed.map((t) => t.id)).toEqual(["done-today"]);
+    });
+
+    it("a list view has no completed/active default, so it already showed both (unaffected)", () => {
+      const listTasks = [
+        task({ id: "done", listId: "list-1", completed: true }),
+        task({ id: "open", listId: "list-1", completed: false }),
+      ];
+      const result = filteredTasks(viewState(listTasks, { kind: "list", listId: "list-1" }, {}), NOW);
+      expect(result.map((t) => t.id).sort()).toEqual(["done", "open"]);
+    });
+  });
+
+  describe("date view (week-strip picker)", () => {
+    it("includes only tasks due on that exact day, excluding yesterday, tomorrow, and completed", () => {
+      const tasks = [
+        task({ id: "yesterday", dueAt: hoursFrom(startOfToday, -6) }),
+        task({ id: "today-morning", dueAt: hoursFrom(startOfToday, 2) }),
+        task({ id: "today-evening", dueAt: hoursFrom(startOfToday, 20) }),
+        task({ id: "tomorrow", dueAt: hoursFrom(startOfTomorrow, 2) }),
+        task({ id: "today-completed", dueAt: hoursFrom(startOfToday, 4), completed: true }),
+      ];
+      const result = filteredTasks(viewState(tasks, { kind: "date", date: isoDate(NOW) }), NOW);
+      expect(result.map((t) => t.id)).toEqual(["today-morning", "today-evening"]);
+    });
+
+    it("unlike the 'today' smart view, does not fold in earlier overdue tasks", () => {
+      const tasks = [
+        task({ id: "overdue", dueAt: hoursFrom(startOfToday, -48) }),
+        task({ id: "today", dueAt: hoursFrom(startOfToday, 2) }),
+      ];
+      const result = filteredTasks(viewState(tasks, { kind: "date", date: isoDate(NOW) }), NOW);
+      expect(result.map((t) => t.id)).toEqual(["today"]);
+    });
+
+    it("excludes tasks with no due date", () => {
+      const tasks = [task({ id: "1", dueAt: null })];
+      const result = filteredTasks(viewState(tasks, { kind: "date", date: isoDate(NOW) }), NOW);
+      expect(result).toEqual([]);
+    });
   });
 });
 

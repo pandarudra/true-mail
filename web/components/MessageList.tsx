@@ -18,6 +18,28 @@ import { useFilteredEmails, useInboxStore } from "@/lib/stores/inbox-store";
 
 const PAGE_SIZE = 25;
 
+// A small set of existing token-based tones (same palette family used for
+// priority pills/StatTile elsewhere) picked deterministically per sender so
+// the same person always gets the same color across a session.
+const AVATAR_TONES = [
+  "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300",
+  "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
+  "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
+  "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400",
+  "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400",
+  "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400",
+];
+
+function senderInitial(from: string): string {
+  return (from.match(/[A-Za-z]/)?.[0] ?? "?").toUpperCase();
+}
+
+function senderTone(from: string): string {
+  let hash = 0;
+  for (let i = 0; i < from.length; i++) hash = (hash * 31 + from.charCodeAt(i)) | 0;
+  return AVATAR_TONES[Math.abs(hash) % AVATAR_TONES.length];
+}
+
 function snippet(text: string | null): string {
   if (!text) return "";
   const oneLine = text.replace(/\s+/g, " ").trim();
@@ -160,6 +182,14 @@ export function MessageList() {
                 >
                   <Star size={16} weight={email.starred ? "fill" : "regular"} />
                 </IconButton>
+                <span
+                  className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${senderTone(email.from)} ${
+                    !email.read ? "ring-2 ring-brand-500 ring-offset-1 ring-offset-surface" : ""
+                  }`}
+                >
+                  <span aria-hidden="true">{senderInitial(email.from)}</span>
+                  {!email.read && <span className="sr-only">Unread</span>}
+                </span>
                 <button
                   type="button"
                   onClick={() => handleRowClick(email.id)}
@@ -167,12 +197,6 @@ export function MessageList() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-2 truncate">
-                      {!email.read && (
-                        <span
-                          aria-label="Unread"
-                          className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-800"
-                        />
-                      )}
                       <span
                         className={`truncate text-sm ${email.read ? "text-text-secondary" : "font-semibold text-foreground"}`}
                       >

@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { IconButton } from "@/components/ui/IconButton";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
+import { TaskCard } from "@/components/tasks/TaskCard";
 import {
   useFilteredTasks,
   useTaskStore,
@@ -104,7 +105,7 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
           <Plus size={16} />
         </IconButton>
       </div>
-      <ul className="flex flex-col gap-1">
+      <ul className="flex flex-col gap-2.5 sm:gap-1">
         {visibleTasks.map((task) => (
           <li
             key={task.id}
@@ -126,65 +127,79 @@ export function TaskList({ onOpenTask }: { onOpenTask: (task: Task) => void }) {
               void reorderTask(draggingId, listId, targetIndex);
               setDraggingId(null);
             }}
-            className="group flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-surface-subtle"
           >
-            {dragEnabled && (
-              // Native HTML5 drag-and-drop doesn't respond to touch, so the
-              // handle would be a non-functional affordance on mobile.
-              <DotsSixVertical
-                size={14}
-                className="hidden shrink-0 cursor-grab text-text-muted sm:flex"
+            {/* Below sm: the premium card treatment (priority pill, subtask
+                progress, due date, linked-email badge). Desktop keeps
+                today's dense row — drag-reordering only exists there
+                anyway, and a row-dense list suits a mouse-driven, larger
+                viewport better than stacked cards do. */}
+            <div className="sm:hidden">
+              <TaskCard
+                task={task}
+                onToggleComplete={(completed) => toggleComplete(task.id, completed)}
+                onOpen={() => onOpenTask(task)}
+                onDelete={() => deleteTask(task.id)}
               />
-            )}
-            <Checkbox
-              checked={task.completed}
-              onChange={(e) => toggleComplete(task.id, e.target.checked)}
-            />
-            <button
-              type="button"
-              onClick={() => onOpenTask(task)}
-              className={`flex min-w-0 flex-1 items-center gap-2 text-left text-sm ${
-                task.completed
-                  ? "text-text-muted line-through"
-                  : "text-foreground"
-              }`}
-            >
-              <span className="truncate">{task.title}</span>
-              {task.sourceEmail && (
-                <EnvelopeSimple
-                  size={13}
-                  className="shrink-0 text-text-muted"
+            </div>
+            <div className="group hidden items-center gap-3 rounded-xl px-2 py-2 hover:bg-surface-subtle sm:flex">
+              {dragEnabled && (
+                // Native HTML5 drag-and-drop doesn't respond to touch, so the
+                // handle would be a non-functional affordance on mobile.
+                <DotsSixVertical
+                  size={14}
+                  className="shrink-0 cursor-grab text-text-muted"
                 />
               )}
-            </button>
-            {task.priority !== "NORMAL" && (
-              <Flag
-                size={14}
-                weight="fill"
-                className={`shrink-0 ${PRIORITY_COLOR[task.priority]}`}
+              <Checkbox
+                checked={task.completed}
+                onChange={(e) => toggleComplete(task.id, e.target.checked)}
               />
-            )}
-            {task.dueAt && (
-              <span
-                className={`shrink-0 whitespace-nowrap text-xs ${
-                  !task.completed && new Date(task.dueAt) < new Date()
-                    ? "text-red-600"
-                    : "text-text-secondary"
+              <button
+                type="button"
+                onClick={() => onOpenTask(task)}
+                className={`flex min-w-0 flex-1 items-center gap-2 text-left text-sm ${
+                  task.completed
+                    ? "text-text-muted line-through"
+                    : "text-foreground"
                 }`}
               >
-                {formatDue(task.dueAt, task.dueHasTime)}
-              </span>
-            )}
-            <IconButton
-              label="Delete task"
-              tone="danger"
-              onClick={() => deleteTask(task.id)}
-              // Always reachable on touch (no :hover there); fades in on
-              // hover only where a real pointer exists.
-              className="flex h-6 w-6 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-            >
-              <TrashSimple size={12} />
-            </IconButton>
+                <span className="truncate">{task.title}</span>
+                {task.sourceEmail && (
+                  <EnvelopeSimple
+                    size={13}
+                    className="shrink-0 text-text-muted"
+                  />
+                )}
+              </button>
+              {task.priority !== "NORMAL" && (
+                <Flag
+                  size={14}
+                  weight="fill"
+                  className={`shrink-0 ${PRIORITY_COLOR[task.priority]}`}
+                />
+              )}
+              {task.dueAt && (
+                <span
+                  className={`shrink-0 whitespace-nowrap text-xs ${
+                    !task.completed && new Date(task.dueAt) < new Date()
+                      ? "text-red-600"
+                      : "text-text-secondary"
+                  }`}
+                >
+                  {formatDue(task.dueAt, task.dueHasTime)}
+                </span>
+              )}
+              <IconButton
+                label="Delete task"
+                tone="danger"
+                onClick={() => deleteTask(task.id)}
+                // Always reachable on touch (no :hover there); fades in on
+                // hover only where a real pointer exists.
+                className="flex h-6 w-6 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+              >
+                <TrashSimple size={12} />
+              </IconButton>
+            </div>
           </li>
         ))}
         {visibleTasks.length === 0 && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CalendarBlank,
   CheckCircle,
@@ -16,7 +16,71 @@ import { Dialog } from "@/components/ui/Dialog";
 import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
 import { useTaskStore, type SmartView } from "@/lib/stores/task-store";
-import { DrawablyButton } from "drawably/react";
+import { isSameDay, toISODate } from "@/lib/cal";
+
+const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
+
+// ponytail: a fixed window around today, not an infinite/lazily-extended
+// scroll — plenty for picking a nearby date; widen the numbers (or add
+// lazy-extend-on-scroll) if people need to plan further out.
+const DAYS_BEFORE_TODAY = 14;
+const DAYS_AFTER_TODAY = 45;
+
+function dayRange(center: Date, before: number, after: number): Date[] {
+  const start = new Date(center.getFullYear(), center.getMonth(), center.getDate() - before);
+  return Array.from({ length: before + after + 1 }, (_, i) => new Date(start.getTime() + i * 24 * 60 * 60 * 1000));
+}
+
+// The only view switcher left on mobile (see the nav below): a horizontally
+// scrollable date strip, auto-scrolled so today starts in view. Tapping a
+// day shows tasks due exactly that day via activeView: {kind:"date"}.
+function WeekStrip() {
+  const activeView = useTaskStore((s) => s.activeView);
+  const selectDate = useTaskStore((s) => s.selectDate);
+  const today = new Date();
+  const days = dayRange(today, DAYS_BEFORE_TODAY, DAYS_AFTER_TODAY);
+  const todayRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    todayRef.current?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, []);
+
+  return (
+    <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-border px-3 py-3" aria-label="Pick a day">
+      {days.map((day) => {
+        const iso = toISODate(day);
+        const selected = activeView.kind === "date" && activeView.date === iso;
+        const isToday = isSameDay(day, today);
+        return (
+          <button
+            key={iso}
+            ref={isToday ? todayRef : undefined}
+            type="button"
+            onClick={() => selectDate(iso)}
+            aria-label={day.toDateString()}
+            aria-pressed={selected}
+            className="flex min-w-11 shrink-0 flex-col items-center gap-1 py-0.5"
+          >
+            <span className="text-[10px] font-medium uppercase tracking-wide text-text-secondary">
+              {WEEKDAY_LETTERS[day.getDay()]}
+            </span>
+            <span
+              className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium transition-colors ${
+                selected
+                  ? "bg-brand-500 text-white"
+                  : isToday
+                    ? "text-brand-700 ring-1 ring-brand-500 dark:text-brand-300"
+                    : "text-foreground"
+              }`}
+            >
+              {day.getDate()}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 const LIST_COLORS = [
   "#ef4444",
@@ -52,71 +116,14 @@ export function TaskListNav() {
 
   return (
     <>
-      {/* Below lg: a horizontal scrollable pill bar, matching the app's
-          mobile-first single-column layout — the vertical sidebar below
-          would otherwise eat most of a phone's width. Renaming/deleting a
-          list from here is intentionally left out: it's a low-frequency
-          action, and the icons that trigger it rely on :hover (desktop
-          only) anyway, so it's reached from the lg+ layout instead. */}
-      <nav
-        className="flex shrink-0 gap-2 overflow-x-auto border-b border-border p-3 lg:hidden"
-        aria-label="Views and lists"
-      >
-        {SMART_VIEWS.map(({ id, label, icon: Icon }) => {
-          const active = activeView.kind === "smart" && activeView.smart === id;
-          return (
-            <DrawablyButton
-              roughness={0.2}
-              boil={0.9}
-              key={id}
-              type="button"
-              onClick={() => selectSmartView(id)}
-              variant={active ? "solid" : "outline"}
-              className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-brand-500 text-white"
-                  : "bg-surface-subtle text-text-secondary"
-              }`}
-            >
-              <Icon size={15} weight={active ? "fill" : "regular"} />
-              {label}
-            </DrawablyButton>
-          );
-        })}
-        {taskLists.length > 0 && (
-          <span className="my-auto h-5 w-px shrink-0 bg-border" />
-        )}
-        {taskLists.map((list) => {
-          const active =
-            activeView.kind === "list" && activeView.listId === list.id;
-          return (
-            <button
-              key={list.id}
-              type="button"
-              onClick={() => selectList(list.id)}
-              className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors ${
-                active
-                  ? "border-foreground text-foreground"
-                  : "border-border text-text-secondary"
-              }`}
-            >
-              <span
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ backgroundColor: list.color }}
-              />
-              {list.name}
-            </button>
-          );
-        })}
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          aria-label="Create list"
-          className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-text-secondary"
-        >
-          <Plus size={16} />
-        </button>
-      </nav>
+      {/* Below lg: just the date strip — Today/Upcoming/Overdue/lists (which
+          aren't dates, so they can't live in the strip itself) are reached
+          from the lg+ sidebar below instead. Matches the app's mobile-first
+          single-column layout either way — the vertical sidebar would
+          otherwise eat most of a phone's width. */}
+      <div className="lg:hidden">
+        <WeekStrip />
+      </div>
 
       <aside className="hidden w-56 shrink-0 flex-col overflow-y-auto border-r border-border p-4 lg:flex">
         <nav className="flex flex-col gap-1">

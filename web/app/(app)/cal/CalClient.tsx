@@ -1,31 +1,24 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { ArrowsClockwise, CalendarBlank, CaretLeft, CaretRight, Flag, MapPin, Plus } from "@phosphor-icons/react";
+import { ArrowsClockwise, CalendarBlank, CaretLeft, CaretRight, MapPin, Plus } from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth-client";
 import { TopBar } from "@/components/TopBar";
 import { Sidebar } from "@/components/Sidebar";
 import { IconButton } from "@/components/ui/IconButton";
-import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
+import { TaskCard } from "@/components/tasks/TaskCard";
 import Cal from "@/components/cal/Cal";
 import { MONTHS } from "@/components/cal/types";
 import { isSameDay, toISODate } from "@/lib/cal";
 import type { Holiday } from "@/lib/holidays/types";
 import { useInboxStore, type Mailbox } from "@/lib/stores/inbox-store";
-import { useTaskStore, type Priority } from "@/lib/stores/task-store";
+import { useTaskStore } from "@/lib/stores/task-store";
 
 const now = new Date();
-
-const PRIORITY_COLOR: Record<Priority, string> = {
-  LOW: "text-text-muted",
-  NORMAL: "text-text-secondary",
-  HIGH: "text-amber-500",
-  URGENT: "text-red-600",
-};
 
 export function CalClient({ initialMailboxes }: { initialMailboxes: Mailbox[] }) {
   const { data: session } = authClient.useSession();
@@ -230,10 +223,15 @@ export function CalClient({ initialMailboxes }: { initialMailboxes: Mailbox[] })
                       <p className="mb-1 px-1 text-[11px] font-medium uppercase tracking-wide text-text-muted">
                         Holidays
                       </p>
-                      <ul className="flex flex-col gap-1">
+                      <ul className="flex flex-col gap-1.5">
                         {dayHolidays.map((holiday) => (
-                          <li key={holiday.id} className="flex items-center gap-3 rounded-xl px-2 py-2">
-                            <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+                          <li
+                            key={holiday.id}
+                            className="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2"
+                          >
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-500/10">
+                              <span className="h-2 w-2 rounded-full bg-amber-500" />
+                            </span>
                             <span className="min-w-0 flex-1 truncate text-sm text-foreground">{holiday.name}</span>
                           </li>
                         ))}
@@ -245,30 +243,13 @@ export function CalClient({ initialMailboxes }: { initialMailboxes: Mailbox[] })
                       <p className="mb-1 px-1 text-[11px] font-medium uppercase tracking-wide text-text-muted">
                         Tasks
                       </p>
-                      <ul className="flex flex-col gap-1">
+                      <ul className="flex flex-col gap-2">
                         {dayTasks.map((task) => (
-                          <li
-                            key={task.id}
-                            className="group flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-surface-subtle"
-                          >
-                            <Checkbox
-                              checked={task.completed}
-                              onChange={(e) => toggleComplete(task.id, e.target.checked)}
+                          <li key={task.id}>
+                            <TaskCard
+                              task={task}
+                              onToggleComplete={(completed) => toggleComplete(task.id, completed)}
                             />
-                            <span
-                              className={`min-w-0 flex-1 truncate text-sm ${
-                                task.completed ? "text-text-muted line-through" : "text-foreground"
-                              }`}
-                            >
-                              {task.title}
-                            </span>
-                            {task.priority !== "NORMAL" && (
-                              <Flag
-                                size={14}
-                                weight="fill"
-                                className={`shrink-0 ${PRIORITY_COLOR[task.priority]}`}
-                              />
-                            )}
                           </li>
                         ))}
                       </ul>
