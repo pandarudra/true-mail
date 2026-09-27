@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { FunnelSimple, Gear, List, Moon, SignOut, Sun } from "@phosphor-icons/react";
+import {
+  FunnelSimple,
+  Gear,
+  List,
+  Moon,
+  SignOut,
+  Sun,
+} from "@phosphor-icons/react";
 import { DrawablyCard, DrawablyCircle, DrawablyDivider } from "drawably/react";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -46,7 +53,9 @@ export function TopBar({
   const onCal = pathname === "/cal";
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
-  const [telegramConnected, setTelegramConnected] = useState<boolean | null>(null);
+  const [telegramConnected, setTelegramConnected] = useState<boolean | null>(
+    null,
+  );
   const isDark = useThemeStore((s) => s.isDark);
   const toggleTheme = useThemeStore((s) => s.toggle);
 
@@ -75,7 +84,13 @@ export function TopBar({
           <List size={20} />
         </button>
         <BrandMark className="hidden sm:flex" />
-        {onTasks ? <TaskSearchBar /> : onCal ? <div className="min-w-0 flex-1" /> : <AskInbox />}
+        {onTasks ? (
+          <TaskSearchBar />
+        ) : onCal ? (
+          <div className="min-w-0 flex-1" />
+        ) : (
+          <AskInbox />
+        )}
         {onCal && calMonthIndex !== undefined && calYear !== undefined && (
           <div className="hidden shrink-0 gap-1.5 sm:flex">
             <Select
@@ -201,8 +216,8 @@ export function TopBar({
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-text-secondary transition-colors hover:bg-surface-subtle"
               >
                 {isDark ? <Sun size={16} /> : <Moon size={16} />}
-                <span className="flex-1">Appearance</span>
-                <span className="text-xs text-text-secondary">{isDark ? "Dark" : "Light"}</span>
+                <span className="flex-1">{isDark ? "Dark" : "Light"}</span>
+                <span className="text-xs text-text-secondary">Appearance</span>
               </button>
 
               <p className="px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-text-secondary">
@@ -217,10 +232,17 @@ export function TopBar({
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-text-secondary transition-colors hover:bg-surface-subtle"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icons/tg-icon.png" alt="" className="h-4 w-4 shrink-0 rounded-[3px]" />
+                <img
+                  src="/icons/tg-icon.png"
+                  alt=""
+                  className="h-4 w-4 shrink-0 rounded-[3px]"
+                />
                 <span className="flex-1">Telegram</span>
                 {telegramConnected && (
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" title="Connected" />
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"
+                    title="Connected"
+                  />
                 )}
               </button>
 

@@ -28,6 +28,8 @@ import { Button } from "@/components/ui/Button";
 import { SummaryCard } from "@/components/ai/SummaryCard";
 import { ActionItemsCard } from "@/components/ai/ActionItemsCard";
 import { PossibleEventCard } from "@/components/ai/PossibleEventCard";
+import { PossiblePromiseCard } from "@/components/ai/PossiblePromiseCard";
+import { PossibleFulfillmentCard } from "@/components/ai/PossibleFulfillmentCard";
 import { AiReplyBar } from "@/components/ai/AiReplyBar";
 import { AddToTaskDialog } from "@/components/tasks/AddToTaskDialog";
 import { FOLDERS } from "@/lib/mail-folders";
@@ -206,6 +208,8 @@ export function ReadingPane({ email }: { email: Email }) {
         )}
         <div className="mb-6" />
         <PossibleEventCard key={email.id} emailId={email.id} />
+        <PossiblePromiseCard key={`promise-${email.id}`} emailId={email.id} />
+        <PossibleFulfillmentCard key={`fulfillment-${email.id}`} emailId={email.id} />
         {safeHtml ? (
           <div dangerouslySetInnerHTML={{ __html: safeHtml }} />
         ) : (

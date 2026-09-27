@@ -43,7 +43,7 @@ export default function LoginPage({
       setError(loginError.message ?? "Login failed");
       return;
     }
-    router.push("/inbox");
+    router.push("/overview");
   }
 
   return (

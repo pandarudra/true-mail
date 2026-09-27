@@ -4,6 +4,7 @@ import { readError } from "@/lib/api-error";
 import { matchesTaskSearchQuery, parseTaskSearchQuery } from "@/lib/task-search-query";
 
 export type Priority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
+export type RecurrenceType = "DAILY" | "WEEKDAYS" | "WEEKLY" | "MONTHLY";
 export type TaskList = { id: string; name: string; color: string; isDefault: boolean };
 export type Subtask = { id: string; title: string; completed: boolean; position: number };
 export type Task = {
@@ -20,6 +21,19 @@ export type Task = {
   sourceEmail: { id: string; from: string; subject: string } | null;
   subtasks: Subtask[];
   createdAt: string;
+  recurrenceType: RecurrenceType | null;
+  recurrenceDaysOfWeek: number[];
+  recurrenceDayOfMonth: number | null;
+  reminderEnabled: boolean;
+  reminderTime: string | null;
+};
+
+export type RecurrenceInput = {
+  recurrenceType: RecurrenceType;
+  recurrenceDaysOfWeek?: number[];
+  recurrenceDayOfMonth?: number | null;
+  reminderEnabled?: boolean;
+  reminderTime?: string;
 };
 export type SmartView = "today" | "upcoming" | "overdue" | "completed" | "all";
 export type TaskView =
@@ -53,6 +67,7 @@ export type TaskState = {
     dueHasTime?: boolean;
     priority?: Priority;
     sourceEmailId?: string;
+    recurrence?: RecurrenceInput | null;
   }) => Promise<void>;
   updateTask: (
     id: string,
@@ -63,6 +78,7 @@ export type TaskState = {
       dueHasTime: boolean;
       priority: Priority;
       listId: string;
+      recurrence: RecurrenceInput | null;
     }>
   ) => Promise<void>;
   toggleComplete: (id: string, completed: boolean) => Promise<void>;

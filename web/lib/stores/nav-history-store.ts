@@ -3,7 +3,7 @@ import { create } from "zustand";
 // Fallback used when there's no internal previous page to go back to
 // (direct entry, or the stack only has the current page). Change this one
 // constant to repoint every smart-back call site at once.
-export const DEFAULT_FALLBACK_ROUTE = "/inbox";
+export const DEFAULT_FALLBACK_ROUTE = "/overview";
 
 const STORAGE_KEY = "truemail:nav-history";
 const MAX_ENTRIES = 50;

@@ -35,6 +35,19 @@ export async function POST(req: Request) {
     dueHasTime: !!body?.dueHasTime,
     priority: body?.priority,
     sourceEmailId: typeof body?.sourceEmailId === "string" ? body.sourceEmailId : null,
+    recurrence: body?.recurrence
+      ? {
+          recurrenceType: body.recurrence.recurrenceType,
+          recurrenceDaysOfWeek: Array.isArray(body.recurrence.recurrenceDaysOfWeek)
+            ? body.recurrence.recurrenceDaysOfWeek
+            : undefined,
+          recurrenceDayOfMonth:
+            typeof body.recurrence.recurrenceDayOfMonth === "number" ? body.recurrence.recurrenceDayOfMonth : null,
+          recurrenceEndAt: body.recurrence.recurrenceEndAt ?? null,
+          reminderEnabled: !!body.recurrence.reminderEnabled,
+          reminderTime: typeof body.recurrence.reminderTime === "string" ? body.recurrence.reminderTime : undefined,
+        }
+      : null,
   });
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status });

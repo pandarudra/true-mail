@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/session";
-import { loadOwnedTask, TASK_INCLUDE } from "@/lib/tasks";
+import { loadOwnedTask, completeRecurringOccurrence, resolveRecurrence, TASK_INCLUDE } from "@/lib/tasks";
 import type { Prisma } from "@/generated/prisma/client";
 
 const PRIORITIES = new Set(["LOW", "NORMAL", "HIGH", "URGENT"]);
@@ -21,6 +21,20 @@ export async function PATCH(
   }
 
   const body = await req.json();
+
+  // A recurring task never just "completes" — checking it off (or swiping
+  // it, same code path) advances the whole series to its next occurrence
+  // instead. Handled separately and returned immediately: mixing this with
+  // other field edits in the same request isn't a real use case today (the
+  // web checkbox and TaskCard's swipe both send `{ completed: true }` alone).
+  if (body?.completed === true && existing.recurrenceType) {
+    const result = await completeRecurringOccurrence(id, userId);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+    return NextResponse.json({ task: result.task });
+  }
+
   const data: Prisma.TaskUncheckedUpdateInput = {};
   if (typeof body?.title === "string" && body.title.trim()) data.title = body.title.trim();
   if ("description" in body) data.description = typeof body.description === "string" ? body.description : null;
@@ -30,6 +44,29 @@ export async function PATCH(
   if (typeof body?.completed === "boolean") {
     data.completed = body.completed;
     data.completedAt = body.completed ? new Date() : null;
+  }
+
+  // "recurrence": null turns an existing recurring task back into a plain
+  // one-off (keeps its current dueAt as a static date); an object
+  // recomputes nextOccurrenceAt/dueAt from now, same resolution createTaskForUser
+  // uses at creation time.
+  if ("recurrence" in body) {
+    if (body.recurrence === null) {
+      data.recurrenceType = null;
+      data.recurrenceDaysOfWeek = [];
+      data.recurrenceDayOfMonth = null;
+      data.recurrenceEndAt = null;
+      data.reminderEnabled = false;
+      data.reminderTime = null;
+      data.nextOccurrenceAt = null;
+      data.snoozedUntil = null;
+    } else {
+      const resolved = await resolveRecurrence(userId, body.recurrence, new Date());
+      if (!resolved.ok) {
+        return NextResponse.json({ error: resolved.error }, { status: resolved.status });
+      }
+      Object.assign(data, resolved.data, { dueAt: resolved.data.nextOccurrenceAt, dueHasTime: true });
+    }
   }
 
   let listId = existing.listId;

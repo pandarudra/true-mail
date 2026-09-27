@@ -2,6 +2,7 @@
 
 import { useRef, useState, type TouchEvent } from "react";
 import {
+  ArrowsClockwise,
   CheckCircle,
   Clock,
   EnvelopeSimple,
@@ -15,10 +16,10 @@ import type { Priority, Task } from "@/lib/stores/task-store";
 import Image from "next/image";
 
 // A fixed left-edge color fill instead of a text pill — reads at a glance,
-// same priority always the same color. NORMAL gets no accent (the common
-// case shouldn't compete visually with the ones that need attention).
-const PRIORITY_ACCENT: Partial<Record<Priority, string>> = {
-  LOW: "border-l-slate-300 dark:border-l-slate-600",
+// same priority always the same color.
+const PRIORITY_ACCENT: Record<Priority, string> = {
+  LOW: "border-l-yellow-400 dark:border-l-yellow-500",
+  NORMAL: "border-l-emerald-500",
   HIGH: "border-l-amber-500",
   URGENT: "border-l-red-600",
 };
@@ -126,7 +127,7 @@ export function TaskCard({
         <DrawablyCard
           roughness={0.3}
           boil={0.1}
-          className={`border-l-4 bg-surface p-3 ${accentClass ?? "border-l-transparent"}`}
+          className={`border-l-4 bg-surface p-3 ${accentClass}`}
         >
           <div className="flex items-start gap-3">
             <Checkbox
@@ -161,7 +162,7 @@ export function TaskCard({
                 </div>
               )}
 
-              {(task.dueAt || task.sourceEmail) && (
+              {(task.dueAt || task.sourceEmail || task.recurrenceType) && (
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
                   {task.dueAt && (
                     <span
@@ -169,6 +170,12 @@ export function TaskCard({
                     >
                       <Clock size={12} />
                       {formatDue(task.dueAt, task.dueHasTime)}
+                    </span>
+                  )}
+                  {task.recurrenceType && (
+                    <span className="flex items-center gap-1 text-text-secondary" title="Recurring task">
+                      <ArrowsClockwise size={12} />
+                      {task.reminderEnabled ? "🔔" : null}
                     </span>
                   )}
                   {task.sourceEmail && (

@@ -72,6 +72,6 @@ describe("nav-history-store", () => {
   });
 
   it("has a configurable fallback route constant", () => {
-    expect(DEFAULT_FALLBACK_ROUTE).toBe("/inbox");
+    expect(DEFAULT_FALLBACK_ROUTE).toBe("/overview");
   });
 });

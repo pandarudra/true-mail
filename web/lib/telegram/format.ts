@@ -31,6 +31,10 @@ export function settingsDeepLink(): string {
   return `${appUrl()}/settings`;
 }
 
+export function promisesDeepLink(): string {
+  return `${appUrl()}/promises`;
+}
+
 export function formatDueDate(dueAt: Date, dueHasTime: boolean): string {
   return dueAt.toLocaleString("en-US", {
     month: "long",

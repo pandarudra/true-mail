@@ -8,11 +8,13 @@ import {
   CheckSquare,
   EnvelopeSimple,
   Flag,
+  Handshake,
   NotePencil,
   PaperPlaneTilt,
   PencilSimpleLine,
   Plus,
   ShieldWarning,
+  SquaresFour,
   Star,
   Stack,
   Tag,
@@ -87,6 +89,19 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
           Compose mail
         </DrawablyLinkButton>
 
+        <a
+          href="/overview"
+          onClick={onClose}
+          className={`mb-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+            pathname === "/overview"
+              ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+              : "text-text-secondary hover:bg-surface-subtle"
+          }`}
+        >
+          <SquaresFour size={18} weight={pathname === "/overview" ? "fill" : "regular"} />
+          Overview
+        </a>
+
         <nav className="flex flex-col gap-1">
           {FOLDER_NAV.map(({ id, label, icon: Icon }) => {
             const active = onInbox && id === activeFolder;
@@ -145,6 +160,18 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
             >
               <CalendarBlank size={18} weight={pathname === "/cal" ? "fill" : "regular"} />
               Calendar
+            </a>
+            <a
+              href="/promises"
+              onClick={onClose}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                pathname === "/promises"
+                  ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+                  : "text-text-secondary hover:bg-surface-subtle"
+              }`}
+            >
+              <Handshake size={18} weight={pathname === "/promises" ? "fill" : "regular"} />
+              Promises
             </a>
           </nav>
         </div>

@@ -10,6 +10,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { readError } from "@/lib/api-error";
 import { toISODate } from "@/lib/cal";
 import { useTaskStore, type Priority } from "@/lib/stores/task-store";
+import { RecurrenceEditor, toRecurrenceInput, type RecurrenceValue } from "@/components/tasks/RecurrenceEditor";
 
 function isoAtLocalMidnight(daysFromNow: number): string {
   const d = new Date();
@@ -70,6 +71,7 @@ function NewTaskForm({
   const [dueAt, setDueAt] = useState<string | null>(defaultDueAt ?? null);
   const [dueHasTime, setDueHasTime] = useState(false);
   const [customDate, setCustomDate] = useState(defaultDueAt ? toISODate(new Date(defaultDueAt)) : "");
+  const [recurrence, setRecurrence] = useState<RecurrenceValue | null>(null);
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const selectedListId = listId || taskLists[0]?.id || "";
@@ -80,8 +82,11 @@ function NewTaskForm({
       title: title.trim(),
       listId: selectedListId || undefined,
       priority,
+      // A recurring task's date comes from its recurrence, not this field —
+      // dueAt/dueHasTime are ignored server-side when recurrence is set.
       dueAt,
       dueHasTime,
+      recurrence: toRecurrenceInput(recurrence),
     });
     onClose();
   }
@@ -108,6 +113,16 @@ function NewTaskForm({
     setDueAt(parsed.dueAt);
     setDueHasTime(!!parsed.dueHasTime);
     setCustomDate("");
+    if (parsed.recurrence) {
+      setRecurrence({
+        recurrenceType: parsed.recurrence.recurrenceType,
+        recurrenceDaysOfWeek: parsed.recurrence.recurrenceDaysOfWeek ?? [],
+        reminderEnabled: parsed.recurrence.reminderTime !== null,
+        reminderTime: parsed.recurrence.reminderTime ?? "09:00",
+      });
+    } else {
+      setRecurrence(null);
+    }
   }
 
   return (
@@ -127,51 +142,54 @@ function NewTaskForm({
         </IconButton>
       </div>
       {parseError && <p className="text-xs text-red-600">{parseError}</p>}
-      <div className="flex flex-wrap gap-1.5">
-        {[
-          { label: "Today", value: isoAtLocalMidnight(0) },
-          { label: "Tomorrow", value: isoAtLocalMidnight(1) },
-          { label: "Next week", value: isoAtLocalMidnight(7) },
-          { label: "No due date", value: null },
-        ].map((opt) => (
-          <button
-            key={opt.label}
-            type="button"
-            onClick={() => {
-              setDueAt(opt.value);
+      {!recurrence && (
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { label: "Today", value: isoAtLocalMidnight(0) },
+            { label: "Tomorrow", value: isoAtLocalMidnight(1) },
+            { label: "Next week", value: isoAtLocalMidnight(7) },
+            { label: "No due date", value: null },
+          ].map((opt) => (
+            <button
+              key={opt.label}
+              type="button"
+              onClick={() => {
+                setDueAt(opt.value);
+                setDueHasTime(false);
+                setCustomDate("");
+              }}
+              className={`rounded-full border px-3 py-1 text-xs ${
+                dueAt === opt.value
+                  ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10"
+                  : "border-border text-text-secondary"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+          <Input
+            type="date"
+            aria-label="Custom due date"
+            value={customDate}
+            onChange={(e) => {
+              const value = e.target.value;
+              setCustomDate(value);
+              if (!value) return;
+              setDueAt(isoFromDateInput(value));
               setDueHasTime(false);
-              setCustomDate("");
             }}
-            className={`rounded-full border px-3 py-1 text-xs ${
-              dueAt === opt.value
-                ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10"
-                : "border-border text-text-secondary"
+            className={`w-auto px-3 py-1 text-xs ${
+              customDate && dueAt === isoFromDateInput(customDate) ? "ring-2 ring-brand-500" : ""
             }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-        <Input
-          type="date"
-          aria-label="Custom due date"
-          value={customDate}
-          onChange={(e) => {
-            const value = e.target.value;
-            setCustomDate(value);
-            if (!value) return;
-            setDueAt(isoFromDateInput(value));
-            setDueHasTime(false);
-          }}
-          className={`w-auto px-3 py-1 text-xs ${
-            customDate && dueAt === isoFromDateInput(customDate) ? "ring-2 ring-brand-500" : ""
-          }`}
-        />
-        {dueAt && dueHasTime && (
-          <span className="rounded-full border border-brand-500 bg-brand-50 px-3 py-1 text-xs text-brand-700 dark:bg-brand-500/10">
-            {new Date(dueAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-          </span>
-        )}
-      </div>
+          />
+          {dueAt && dueHasTime && (
+            <span className="rounded-full border border-brand-500 bg-brand-50 px-3 py-1 text-xs text-brand-700 dark:bg-brand-500/10">
+              {new Date(dueAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+            </span>
+          )}
+        </div>
+      )}
+      <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
       <div className="flex flex-wrap gap-2">
         <Select aria-label="Priority" value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
           {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (

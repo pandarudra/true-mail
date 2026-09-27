@@ -16,6 +16,7 @@ TrueMail is a self-hosted-friendly email client that runs on **your own domain**
 - **Reply, reply-all, and forward** — direction-aware recipients and quoted replies
 - **Attachments** — uploaded via Cloudinary for outgoing mail; incoming attachments are fetched from Resend on demand (no duplicate storage)
 - **Tasks** — a task manager built into the inbox: due dates (quick presets or a custom date picker), priorities, lists, subtasks, and Today/Upcoming/Overdue/Completed views. Add a task straight from an email via the reading pane, and it stays linked back to the email it came from
+- **Recurring tasks & reminders** (optional, needs `CRON_SECRET` and a Telegram connection) — Daily/Weekdays/Weekly/Monthly repeat rules with a reminder time, delivered as a Telegram message with Done/Skip/Snooze buttons that advance the series on its own. Works from the web dialogs or plain language ("study every day at 9pm")
 - **Calendar** — a real month view with today auto-highlighted, national and regional holidays for whichever country you pick (via [Calendarific](https://calendarific.com), cached server-side), and tasks shown and manageable right on their due date
 - **Dark mode**, a hand-drawn UI (via [Drawably](https://www.npmjs.com/package/drawably)), and a profile with a custom avatar
 - **Responsive** — the inbox, compose, settings, tasks, calendar, and landing page all adapt down to phone-sized screens
@@ -70,6 +71,7 @@ Fill in `.env`:
 - `NVIDIA_API_KEY` — optional, for AI features (a free-tier key from [build.nvidia.com](https://build.nvidia.com))
 - `CALENDARFIC_API_KEY` — optional, for the calendar's holiday data (a free-tier key from [calendarific.com](https://calendarific.com); the env var is spelled `CALENDARFIC`, not `CALENDARIFIC` — matches the name already used in `lib/holidays/calendarific.ts`)
 - `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME` / `TELEGRAM_WEBHOOK_SECRET` — optional, for the Telegram assistant (see [Telegram bot setup](#telegram-bot-setup) below)
+- `CRON_SECRET` — optional, for recurring task reminders (see [Recurring task reminders setup](#recurring-task-reminders-setup) below)
 
 Register your own Resend OAuth client (one-time, re-run whenever `APP_URL` changes):
 
@@ -99,6 +101,14 @@ Optional — the app works fully without it.
    ```
 5. Start TrueMail, sign in, go to **Settings → Telegram → Connect Telegram**, and tap the link it opens.
 6. Try `/today` in the chat.
+
+### Recurring task reminders setup
+
+Optional — needs Telegram connected (above) and `CRON_SECRET` set. A recurring task's reminder is delivered by hitting `GET /api/cron/reminders` every few minutes; there's no built-in scheduler, since a Next.js app has no long-running process to keep one in.
+
+1. Set `CRON_SECRET` in `.env` (any random string — generate one with `node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`).
+2. Point an external scheduler at `$APP_URL/api/cron/reminders?secret=$CRON_SECRET` on a few-minutes interval — [cron-job.org](https://cron-job.org) (free) or a scheduled GitHub Actions workflow both work, since the route only needs a plain `GET`.
+3. Set your timezone once in **Settings** (or let it auto-detect from your browser), then create a recurring task — from **Tasks → New task → Repeat**, or by telling the Telegram bot something like "study every day at 9pm".
 
 ### Scripts
 

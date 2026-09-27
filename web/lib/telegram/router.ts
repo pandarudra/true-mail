@@ -25,6 +25,7 @@ const MENU_SHORTCUTS: Record<string, (userId: string, chatId: string) => Promise
   "📋 Tasks": handlers.handleListTasks,
   "🎯 Goal": handlers.handleGoalToday,
   "📅 Calendar": handlers.handleCalendarToday,
+  "🤝 Promises": handlers.handlePromises,
 };
 
 const SLASH_COMMANDS: Record<string, (userId: string, chatId: string, arg: string) => Promise<void>> = {
@@ -33,6 +34,8 @@ const SLASH_COMMANDS: Record<string, (userId: string, chatId: string, arg: strin
   "/summary": handlers.handleEmailSummary,
   "/calendar": handlers.handleCalendarToday,
   "/goal": handlers.handleGoalToday,
+  "/promises": handlers.handlePromises,
+  "/routines": handlers.handleRecurringTasks,
   "/create": (userId, chatId, arg) => handlers.handleCreateTask(userId, chatId, arg),
   "/done": (userId, chatId, arg) => handlers.handleCompleteTaskQuery(userId, chatId, arg),
   "/settings": handlers.handleSettings,
@@ -100,6 +103,10 @@ export async function routeMessage(userId: string | null, chatId: string, messag
       return handlers.handleGoalToday(userId, chatId);
     case "ask_inbox":
       return handlers.handleAskInbox(userId, chatId, text);
+    case "promises":
+      return handlers.handlePromises(userId, chatId);
+    case "recurring_tasks":
+      return handlers.handleRecurringTasks(userId, chatId);
     default:
       return handlers.handleUnknown(chatId);
   }

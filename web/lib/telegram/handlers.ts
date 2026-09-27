@@ -8,11 +8,15 @@ import {
   tasksDeepLink,
   calendarDeepLink,
   settingsDeepLink,
+  promisesDeepLink,
   formatDueDate,
 } from "@/lib/telegram/format";
 import { getDailySummary, getTaskBuckets, getEmailSummary, getTodayHolidays, type TaskSummary } from "@/lib/telegram/summary";
-import { createTaskForUser, ownsTask } from "@/lib/tasks";
+import { createTaskForUser, completeRecurringOccurrence, ownsTask } from "@/lib/tasks";
+import { getPromisesForUser, type DerivedPromiseStatus } from "@/lib/promises";
 import { parseTaskFromText } from "@/lib/ai/parse-task";
+import { computeNextOccurrence, describeRecurrence } from "@/lib/recurrence";
+import { offsetMinutesForZone } from "@/lib/timezone";
 import { summarizeEmail } from "@/lib/ai/summarize-email";
 import { askInbox } from "@/lib/ai/ask-inbox";
 import { getDefaultMailbox } from "@/lib/telegram/summary";
@@ -21,7 +25,8 @@ import { chatText } from "@/lib/ai/nvidia";
 export const MAIN_MENU_KEYBOARD = [
   ["☀️ My Day", "📬 Inbox"],
   ["📋 Tasks", "🎯 Goal"],
-  ["📅 Calendar", "🤖 Ask TrueMail"],
+  ["📅 Calendar", "🤝 Promises"],
+  ["🤖 Ask TrueMail"],
 ];
 
 function urlButton(text: string, url: string): InlineButton {
@@ -78,6 +83,8 @@ export async function handleHelp(chatId: string) {
       "/create <task> — create a task",
       "/done — complete a task",
       "/goal — today's focus",
+      "/promises — what you're waiting on and what you owe",
+      "/routines — your recurring tasks and reminders",
       "/settings — connection status",
       "/disconnect — unlink Telegram",
       "",
@@ -197,16 +204,73 @@ export async function handleListTasks(userId: string, chatId: string) {
 
 export async function handleCreateTask(userId: string, chatId: string, text: string) {
   if (!text.trim()) {
-    await sendMessage(chatId, 'What should the task say? Try: "Create a task to send the proposal tomorrow at 10am"\\.');
+    await sendMessage(chatId, 'What should the task say? Try: "Create a task to send the proposal tomorrow at 10am" or "Study every day at 9pm"\\.');
     return;
   }
   try {
-    const parsed = await parseTaskFromText(text, 0);
-    const result = await createTaskForUser(userId, { title: parsed.title, dueAt: parsed.dueAt, dueHasTime: parsed.dueHasTime });
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } });
+    // No stored zone (a Telegram-only user who never opened the web app, so
+    // TimezoneSync never ran) falls back to UTC for one-off date parsing,
+    // same as the web quick-add's own default — recurring tasks still get a
+    // clear "set your timezone" error from createTaskForUser below.
+    const offsetMinutes = user?.timezone ? offsetMinutesForZone(new Date(), user.timezone) : 0;
+    const parsed = await parseTaskFromText(text, offsetMinutes);
+    const recurrence = parsed.recurrence;
+    const timeIsAmbiguous = recurrence !== null && recurrence.reminderTime === null;
+
+    const result = await createTaskForUser(userId, {
+      title: parsed.title,
+      dueAt: parsed.dueAt,
+      dueHasTime: parsed.dueHasTime,
+      recurrence: recurrence
+        ? {
+            recurrenceType: recurrence.recurrenceType,
+            recurrenceDaysOfWeek: recurrence.recurrenceDaysOfWeek,
+            reminderEnabled: !timeIsAmbiguous,
+            reminderTime: recurrence.reminderTime ?? "09:00",
+          }
+        : null,
+    });
     if (!result.ok) {
       await sendMessage(chatId, `Couldn't create that task: ${escapeMarkdown(result.error)}\\.`);
       return;
     }
+
+    if (recurrence) {
+      // Describe from the task as actually stored, not the raw parse — this
+      // is what carries a defaulted recurrenceDayOfMonth/recurrenceDaysOfWeek
+      // (see createTaskForUser/defaultRecurrenceFields) that the parsed shape
+      // alone doesn't have.
+      const pattern = describeRecurrence({
+        recurrenceType: result.task.recurrenceType!,
+        recurrenceDaysOfWeek: result.task.recurrenceDaysOfWeek,
+        recurrenceDayOfMonth: result.task.recurrenceDayOfMonth,
+        reminderTime: result.task.reminderTime!,
+      });
+      const lines = [`✅ ${bold("Recurring task created")}`, "", escapeMarkdown(result.task.title)];
+      if (!timeIsAmbiguous) {
+        lines.push(`🔁 ${escapeMarkdown(pattern)}`, `🔔 Reminder enabled`);
+        await sendMessage(chatId, lines.join("\n"));
+      } else {
+        // The placeholder "09:00" used to compute a first occurrence hasn't
+        // been confirmed yet — strip its stated time off the description so
+        // the message doesn't say "at 9:00 AM" right above buttons offering
+        // to pick a time.
+        lines.push(`🔁 ${escapeMarkdown(pattern.replace(/ at \d{1,2}:\d{2} (AM|PM)$/, ""))}`);
+        await sendMessage(chatId, lines.join("\n"));
+        await sendMessage(chatId, "What time should I remind you?", {
+          buttons: [
+            [
+              { text: "7 AM", callback_data: `trt:${result.task.id}:7` },
+              { text: "9 AM", callback_data: `trt:${result.task.id}:9` },
+            ],
+            [urlButton("Choose a custom time", tasksDeepLink())],
+          ],
+        });
+      }
+      return;
+    }
+
     const due = result.task.dueAt ? `\n📅 ${escapeMarkdown(formatDueDate(result.task.dueAt, result.task.dueHasTime))}` : "";
     await sendMessage(chatId, `✅ ${bold("Task created")}\n\n${escapeMarkdown(result.task.title)}${due}`, {
       buttons: [[{ text: "Undo", callback_data: `delete_task:${result.task.id}` }]],
@@ -321,6 +385,71 @@ export async function handleAskInbox(userId: string, chatId: string, question: s
   }
 }
 
+// ---- Promises ----
+
+const STATUS_MARKER: Record<DerivedPromiseStatus, string> = {
+  OVERDUE: "🔴",
+  DUE_SOON: "🟠",
+  ACTIVE: "🔵",
+  FULFILLED: "🟢",
+  DISMISSED: "⚪",
+};
+
+function promiseLine(p: { direction: string; personName: string | null; personEmail: string | null; commitment: string; dueAt: Date | null; derivedStatus: DerivedPromiseStatus }): string {
+  const who = p.direction === "INCOMING" ? (p.personName ?? p.personEmail ?? "Someone") : "You";
+  const due = p.dueAt ? ` — ${escapeMarkdown(formatDueDate(p.dueAt, false))}` : "";
+  return `${STATUS_MARKER[p.derivedStatus]} ${escapeMarkdown(who)}: ${escapeMarkdown(p.commitment)}${due}`;
+}
+
+export async function handlePromises(userId: string, chatId: string) {
+  const promises = await getPromisesForUser(userId);
+  const active = promises.filter((p) => p.derivedStatus !== "FULFILLED" && p.derivedStatus !== "DISMISSED");
+
+  if (active.length === 0) {
+    await sendMessage(chatId, `🤝 ${bold("Promises")}\n\nNothing tracked right now\\.`);
+    return;
+  }
+
+  const waiting = active.filter((p) => p.direction === "INCOMING");
+  const mine = active.filter((p) => p.direction === "OUTGOING");
+  const lines = [`🤝 ${bold("Promises")}`, ""];
+  if (waiting.length > 0) {
+    lines.push(bold("Waiting on others"), ...waiting.map(promiseLine), "");
+  }
+  if (mine.length > 0) {
+    lines.push(bold("Your promises"), ...mine.map(promiseLine));
+  }
+
+  await sendMessage(chatId, lines.join("\n"), { buttons: [[urlButton("Open Promises", promisesDeepLink())]] });
+}
+
+// ---- Recurring tasks ----
+
+export async function handleRecurringTasks(userId: string, chatId: string) {
+  const tasks = await prisma.task.findMany({
+    where: { userId, recurrenceType: { not: null } },
+    orderBy: { nextOccurrenceAt: "asc" },
+  });
+
+  if (tasks.length === 0) {
+    await sendMessage(chatId, `🔁 ${bold("Recurring Tasks")}\n\nNothing set up yet — try "Study every day at 9pm"\\.`);
+    return;
+  }
+
+  const lines = [`🔁 ${bold("Recurring Tasks")}`, ""];
+  for (const t of tasks) {
+    const pattern = describeRecurrence({
+      recurrenceType: t.recurrenceType!,
+      recurrenceDaysOfWeek: t.recurrenceDaysOfWeek,
+      recurrenceDayOfMonth: t.recurrenceDayOfMonth,
+      reminderTime: t.reminderTime ?? "09:00",
+    });
+    const bell = t.reminderEnabled ? "🔔" : "🔕";
+    lines.push(`${bell} ${escapeMarkdown(t.title)} — ${escapeMarkdown(pattern)}`);
+  }
+  await sendMessage(chatId, lines.join("\n"), { buttons: [[urlButton("Open Tasks", tasksDeepLink())]] });
+}
+
 export async function handleUnknown(chatId: string) {
   await sendMessage(chatId, "Not sure how to help with that yet — try /help for what I can do\\.");
 }
@@ -375,6 +504,83 @@ export async function handleCallback(
     case "disconnect_cancel": {
       await answerCallbackQuery(callbackQueryId, "Cancelled");
       await editMessageText(chatId, messageId, "Cancelled\\.");
+      return;
+    }
+    case "td":
+    case "tsk": {
+      // Re-split rather than relying on the 2-part `arg` above — these
+      // carry a third field (the occurrence epoch-seconds this button was
+      // shown for).
+      const [, taskId, epochStr] = data.split(":");
+      const isDone = action === "td";
+      await answerCallbackQuery(callbackQueryId, isDone ? "Done" : "Skipped");
+      if (!taskId || !(await ownsTask(taskId, userId))) return;
+
+      const task = await prisma.task.findFirst({ where: { id: taskId, userId } });
+      if (!task) return;
+      const buttonOccurrenceMs = Number(epochStr) * 1000;
+      // Already advanced past this occurrence (a prior press on the same
+      // message, or the schedule having moved on since) — avoid
+      // double-advancing the whole series.
+      if (task.nextOccurrenceAt && task.nextOccurrenceAt.getTime() > buttonOccurrenceMs) {
+        await editMessageText(chatId, messageId, "Already handled\\.");
+        return;
+      }
+
+      const result = await completeRecurringOccurrence(taskId, userId);
+      if (!result.ok) return;
+      const nextText = result.task.nextOccurrenceAt
+        ? `\nNext: ${escapeMarkdown(formatDueDate(result.task.nextOccurrenceAt, true))}`
+        : "";
+      await editMessageText(
+        chatId,
+        messageId,
+        `${isDone ? "✅" : "⏭"} ${bold(isDone ? "Done" : "Skipped")}\n\n${escapeMarkdown(result.task.title)}${nextText}`
+      );
+      return;
+    }
+    case "tsn": {
+      const [, taskId] = data.split(":");
+      await answerCallbackQuery(callbackQueryId, "Snoozed 10 minutes");
+      if (!taskId || !(await ownsTask(taskId, userId))) return;
+      await prisma.task.update({ where: { id: taskId }, data: { snoozedUntil: new Date(Date.now() + 10 * 60 * 1000) } });
+      await editMessageText(chatId, messageId, "⏰ Snoozed 10 minutes\\.");
+      return;
+    }
+    case "trt": {
+      // Resolves the "what time?" follow-up sent when a recurring task was
+      // created with no time stated (see handleCreateTask) — turns on the
+      // reminder and recomputes its first real occurrence for that hour.
+      const [, taskId, hourStr] = data.split(":");
+      await answerCallbackQuery(callbackQueryId, "Reminder set");
+      if (!taskId || !(await ownsTask(taskId, userId))) return;
+
+      const task = await prisma.task.findFirst({ where: { id: taskId, userId } });
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } });
+      if (!task?.recurrenceType || !user?.timezone) return;
+
+      const reminderTime = `${hourStr.padStart(2, "0")}:00`;
+      const next = computeNextOccurrence(
+        {
+          recurrenceType: task.recurrenceType,
+          recurrenceDaysOfWeek: task.recurrenceDaysOfWeek,
+          recurrenceDayOfMonth: task.recurrenceDayOfMonth,
+          reminderTime,
+        },
+        user.timezone,
+        new Date()
+      );
+      const updated = await prisma.task.update({
+        where: { id: taskId },
+        data: { reminderEnabled: true, reminderTime, nextOccurrenceAt: next, dueAt: next },
+      });
+      const pattern = describeRecurrence({
+        recurrenceType: updated.recurrenceType!,
+        recurrenceDaysOfWeek: updated.recurrenceDaysOfWeek,
+        recurrenceDayOfMonth: updated.recurrenceDayOfMonth,
+        reminderTime: updated.reminderTime!,
+      });
+      await editMessageText(chatId, messageId, `🔔 ${bold("Reminder set")}\n\n${escapeMarkdown(updated.title)}\n🔁 ${escapeMarkdown(pattern)}`);
       return;
     }
     default:

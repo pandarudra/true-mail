@@ -42,6 +42,7 @@ await call("setMyCommands", {
     { command: "summary", description: "Email summary" },
     { command: "calendar", description: "Today's calendar" },
     { command: "goal", description: "Today's focus" },
+    { command: "promises", description: "What you're waiting on" },
     { command: "create", description: "Create a task" },
     { command: "done", description: "Complete a task" },
     { command: "settings", description: "Connection status" },

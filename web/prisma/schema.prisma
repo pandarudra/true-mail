@@ -22,6 +22,12 @@ model User {
   holidayCountry String?
   holidayRegion  String?
 
+  // IANA zone (e.g. "Asia/Kolkata") — auto-detected client-side on first
+  // load (see app/api/settings/timezone), editable in Settings. Required
+  // for recurring-task reminders to fire at the right wall-clock time from
+  // a server-side cron, which has no browser to read an offset from.
+  timezone String?
+
   resendConnection   ResendConnection?
   domains            Domain[]
   mailboxes          Mailbox[]
@@ -32,6 +38,7 @@ model User {
   tasks              Task[]
   telegramConnection TelegramConnection?
   telegramLinkTokens TelegramLinkToken[]
+  promises           Promise[]
 
   @@map("user")
 }
@@ -103,6 +110,7 @@ model Email {
   labels        Label[]
   attachments   Attachment[]
   tasks         Task[]
+  promises      Promise[]
 }
 
 model Attachment {
@@ -172,6 +180,63 @@ model Task {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   subtasks      Subtask[]
+  promise       Promise?
+
+  // Recurring task + reminder fields. recurrenceType: null means "not
+  // recurring" — every task created before this feature, unaffected. See
+  // lib/recurrence.ts for how nextOccurrenceAt is computed and advanced;
+  // dueAt is kept in sync with it so every existing task-list/calendar view
+  // needs no changes to show a recurring task's upcoming date.
+  recurrenceType       RecurrenceType?
+  recurrenceDaysOfWeek Int[]           @default([])
+  recurrenceDayOfMonth Int?
+  recurrenceEndAt      DateTime?
+  reminderEnabled      Boolean         @default(false)
+  reminderTime         String?
+  nextOccurrenceAt     DateTime?
+  snoozedUntil         DateTime?
+}
+
+enum RecurrenceType {
+  DAILY
+  WEEKDAYS
+  WEEKLY
+  MONTHLY
+}
+
+enum PromiseDirection {
+  INCOMING
+  OUTGOING
+}
+
+enum PromiseStatus {
+  ACTIVE
+  FULFILLED
+  DISMISSED
+}
+
+// Only durable state is stored (ACTIVE/FULFILLED/DISMISSED) — DUE_SOON and
+// OVERDUE are derived at read time from status + dueAt (see
+// lib/promises.ts#derivePromiseStatus), so they can never go stale.
+model Promise {
+  id            String           @id @default(uuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  direction     PromiseDirection
+  personName    String?
+  personEmail   String?
+  commitment    String
+  dueAt         DateTime?
+  status        PromiseStatus    @default(ACTIVE)
+  confidence    Float?
+  sourceEmailId String?
+  sourceEmail   Email?           @relation(fields: [sourceEmailId], references: [id], onDelete: SetNull)
+  relatedTaskId String?          @unique
+  relatedTask   Task?            @relation(fields: [relatedTaskId], references: [id], onDelete: SetNull)
+  fulfilledAt   DateTime?
+  dismissedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 }
 
 model Subtask {

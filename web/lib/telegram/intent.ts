@@ -9,6 +9,8 @@ export const INTENTS = [
   "calendar_today",
   "goal_today",
   "ask_inbox",
+  "promises",
+  "recurring_tasks",
   "unknown",
 ] as const;
 
@@ -42,6 +44,10 @@ export async function classifyIntent(text: string): Promise<IntentResult> {
         "calendar_today: asking about meetings/events/calendar for a specific day. " +
         "goal_today: asking what to focus on or what the most important thing is. " +
         "ask_inbox: a specific question about email content (e.g. finding an email from someone). " +
+        "promises: asking what they're waiting on, who owes them something, what they've promised, " +
+        "or which commitments/promises are due or overdue. " +
+        "recurring_tasks: asking to see their recurring tasks/habits/routines specifically (e.g. " +
+        '"what are my daily habits", "show my recurring reminders") — not a general task list. ' +
         "unknown: anything else, including greetings and small talk.",
       user: text,
       maxTokens: 20,

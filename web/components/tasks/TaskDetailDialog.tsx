@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/Button";
 import { useTaskStore, type Priority, type Task } from "@/lib/stores/task-store";
+import { RecurrenceEditor, toRecurrenceInput, type RecurrenceValue } from "@/components/tasks/RecurrenceEditor";
 
 const PRIORITY_LABEL: Record<Priority, string> = {
   LOW: "Low",
@@ -41,6 +42,15 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
 
   if (!task) return null;
 
+  const recurrenceValue: RecurrenceValue | null = task.recurrenceType
+    ? {
+        recurrenceType: task.recurrenceType,
+        recurrenceDaysOfWeek: task.recurrenceDaysOfWeek,
+        reminderEnabled: task.reminderEnabled,
+        reminderTime: task.reminderTime ?? "09:00",
+      }
+    : null;
+
   function setDue(dateStr: string, timeStr: string) {
     if (!task) return;
     if (!dateStr) {
@@ -71,21 +81,25 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
           />
 
           <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="date"
-              defaultValue={toDateInputValue(task.dueAt)}
-              key={`date-${task.id}`}
-              onChange={(e) => setDue(e.target.value, toTimeInputValue(task.dueAt))}
-              className="min-h-11 rounded-lg border border-border bg-surface px-2.5 text-sm text-foreground"
-            />
-            <input
-              type="time"
-              defaultValue={toTimeInputValue(task.dueAt)}
-              key={`time-${task.id}`}
-              disabled={!task.dueAt}
-              onChange={(e) => setDue(toDateInputValue(task.dueAt), e.target.value)}
-              className="min-h-11 rounded-lg border border-border bg-surface px-2.5 text-sm text-foreground disabled:opacity-50"
-            />
+            {!recurrenceValue && (
+              <>
+                <input
+                  type="date"
+                  defaultValue={toDateInputValue(task.dueAt)}
+                  key={`date-${task.id}`}
+                  onChange={(e) => setDue(e.target.value, toTimeInputValue(task.dueAt))}
+                  className="min-h-11 rounded-lg border border-border bg-surface px-2.5 text-sm text-foreground"
+                />
+                <input
+                  type="time"
+                  defaultValue={toTimeInputValue(task.dueAt)}
+                  key={`time-${task.id}`}
+                  disabled={!task.dueAt}
+                  onChange={(e) => setDue(toDateInputValue(task.dueAt), e.target.value)}
+                  className="min-h-11 rounded-lg border border-border bg-surface px-2.5 text-sm text-foreground disabled:opacity-50"
+                />
+              </>
+            )}
             <Select
               aria-label="Priority"
               value={task.priority}
@@ -109,6 +123,8 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
               ))}
             </Select>
           </div>
+
+          <RecurrenceEditor value={recurrenceValue} onChange={(v) => updateTask(task.id, { recurrence: toRecurrenceInput(v) })} />
 
           {task.sourceEmail && (
             <a

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { authClient } from "@/lib/auth-client";
 import { useSmartBack } from "@/lib/use-smart-back";
 import { TelegramSection } from "@/components/settings/TelegramSection";
+import { TimezoneSection } from "@/components/settings/TimezoneSection";
 
 type User = { name: string; email: string; image: string | null };
 
@@ -124,6 +125,7 @@ export function SettingsClient({ user: initialUser }: { user: User }) {
           </div>
         </form>
 
+        <TimezoneSection />
         <TelegramSection />
       </DrawablyCard>
     </main>

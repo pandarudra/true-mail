@@ -16,6 +16,11 @@ function task(overrides: Partial<Task> = {}): Task {
     sourceEmail: null,
     subtasks: [],
     createdAt: new Date().toISOString(),
+    recurrenceType: null,
+    recurrenceDaysOfWeek: [],
+    recurrenceDayOfMonth: null,
+    reminderEnabled: false,
+    reminderTime: null,
     ...overrides,
   };
 }
