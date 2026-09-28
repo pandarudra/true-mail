@@ -6,18 +6,20 @@ import { TopBar } from "@/components/TopBar";
 import { Sidebar } from "@/components/Sidebar";
 import { OverviewDashboard } from "@/components/overview/OverviewDashboard";
 import { useInboxStore, type Mailbox } from "@/lib/stores/inbox-store";
-import type { Snapshot } from "@/lib/productivity-snapshot-shared";
+import type { ActivityDay, Snapshot } from "@/lib/productivity-snapshot-shared";
 
 export function OverviewClient({
   initialMailboxes,
   unreadCount,
   taskCount,
   snapshots,
+  activity,
 }: {
   initialMailboxes: Mailbox[];
   unreadCount: number;
   taskCount: number;
   snapshots: { tasks: Snapshot; promises: Snapshot; today: Snapshot };
+  activity: ActivityDay[];
 }) {
   const { data: session } = authClient.useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -41,7 +43,13 @@ export function OverviewClient({
       />
       <div className="flex flex-1 overflow-hidden bg-surface">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <OverviewDashboard name={session?.user.name} unreadCount={unreadCount} taskCount={taskCount} snapshots={snapshots} />
+        <OverviewDashboard
+          name={session?.user.name}
+          unreadCount={unreadCount}
+          taskCount={taskCount}
+          snapshots={snapshots}
+          activity={activity}
+        />
       </div>
     </div>
   );

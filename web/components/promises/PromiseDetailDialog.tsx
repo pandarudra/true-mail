@@ -6,6 +6,7 @@ import { CalendarPlus, CheckCircle, PaperPlaneTilt, X } from "@phosphor-icons/re
 import { Dialog } from "@/components/ui/Dialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
+import { RecurrenceEditor, toRecurrenceInput, type RecurrenceValue } from "@/components/tasks/RecurrenceEditor";
 import { usePromiseStore, type PromiseRecord } from "@/lib/stores/promise-store";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -29,6 +30,7 @@ export function PromiseDetailDialog({ promise, onClose }: { promise: PromiseReco
   const [confirmingDismiss, setConfirmingDismiss] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
   const [followingUp, setFollowingUp] = useState(false);
+  const [recurrence, setRecurrence] = useState<RecurrenceValue | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!promise) return null;
@@ -38,7 +40,7 @@ export function PromiseDetailDialog({ promise, onClose }: { promise: PromiseReco
   async function handleCreateTask() {
     setCreatingTask(true);
     setError(null);
-    const { error } = await createTaskFromPromise(promise!.id);
+    const { error } = await createTaskFromPromise(promise!.id, toRecurrenceInput(recurrence));
     setCreatingTask(false);
     if (error) setError(error);
   }
@@ -113,16 +115,19 @@ export function PromiseDetailDialog({ promise, onClose }: { promise: PromiseReco
               Linked task: {promise.relatedTask.title}
             </a>
           ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleCreateTask}
-              disabled={creatingTask}
-              className="w-fit"
-            >
-              <CalendarPlus size={14} />
-              {creatingTask ? "Creating…" : "Create Task"}
-            </Button>
+            <div className="flex flex-col gap-2">
+              <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleCreateTask}
+                disabled={creatingTask}
+                className="w-fit"
+              >
+                <CalendarPlus size={14} />
+                {creatingTask ? "Creating…" : "Create Task"}
+              </Button>
+            </div>
           )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}

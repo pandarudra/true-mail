@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { readError } from "@/lib/api-error";
+import type { RecurrenceInput } from "@/lib/stores/task-store";
 
 export type PromiseDirection = "INCOMING" | "OUTGOING";
 export type PromiseStoredStatus = "ACTIVE" | "FULFILLED" | "DISMISSED";
@@ -33,7 +34,7 @@ type PromiseState = {
   setFilter: (filter: PromiseFilter) => void;
   fulfill: (id: string) => Promise<void>;
   dismiss: (id: string) => Promise<void>;
-  createTaskFromPromise: (id: string) => Promise<{ error?: string }>;
+  createTaskFromPromise: (id: string, recurrence?: RecurrenceInput | null) => Promise<{ error?: string }>;
 };
 
 export const usePromiseStore = create<PromiseState>((set, get) => ({
@@ -79,8 +80,12 @@ export const usePromiseStore = create<PromiseState>((set, get) => ({
     await get().fetchPromises();
   },
 
-  async createTaskFromPromise(id) {
-    const res = await fetch(`/api/promises/${id}/create-task`, { method: "POST" });
+  async createTaskFromPromise(id, recurrence) {
+    const res = await fetch(`/api/promises/${id}/create-task`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recurrence: recurrence ?? null }),
+    });
     if (!res.ok) return { error: await readError(res) };
     await get().fetchPromises();
     return {};

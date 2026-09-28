@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { CalendarBlank, EnvelopeSimple, Handshake, ListChecks, PencilSimpleLine } from "@phosphor-icons/react";
 import { StatTile } from "@/components/ui/StatTile";
 import { ProductivitySnapshot } from "@/components/productivity/ProductivitySnapshot";
-import type { Snapshot } from "@/lib/productivity-snapshot-shared";
+import { ActivityGraph } from "@/components/overview/ActivityGraph";
+import type { ActivityDay, Snapshot } from "@/lib/productivity-snapshot-shared";
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -48,11 +49,13 @@ export function OverviewDashboard({
   unreadCount,
   taskCount,
   snapshots,
+  activity,
 }: {
   name?: string | null;
   unreadCount: number;
   taskCount: number;
   snapshots: Record<SnapshotVariant, Snapshot>;
+  activity: ActivityDay[];
 }) {
   const router = useRouter();
   const [variant, setVariant] = useState<SnapshotVariant>("tasks");
@@ -127,6 +130,10 @@ export function OverviewDashboard({
           insight={snapshots[variant].insight}
           emptyMessage={meta.emptyMessage}
         />
+      </div>
+
+      <div className="max-w-4xl">
+        <ActivityGraph data={activity} title="Task & Promise Activity" />
       </div>
     </div>
   );

@@ -2,18 +2,19 @@ import { headers } from "next/headers";
 import { getUserId } from "@/lib/session";
 import { requireMailboxes } from "@/lib/require-mailboxes";
 import { getDailySummary } from "@/lib/telegram/summary";
-import { getTaskSnapshot, getPromiseSnapshot, getTodaySnapshot } from "@/lib/productivity-snapshot";
+import { getTaskSnapshot, getPromiseSnapshot, getTodaySnapshot, getActivitySnapshot } from "@/lib/productivity-snapshot";
 import { OverviewClient } from "./OverviewClient";
 
 export default async function OverviewPage() {
   const userId = (await getUserId(await headers()))!;
   const mailboxes = await requireMailboxes(userId);
 
-  const [daily, tasksSnapshot, promisesSnapshot, todaySnapshot] = await Promise.all([
+  const [daily, tasksSnapshot, promisesSnapshot, todaySnapshot, activity] = await Promise.all([
     getDailySummary(userId),
     getTaskSnapshot(userId),
     getPromiseSnapshot(userId),
     getTodaySnapshot(userId),
+    getActivitySnapshot(userId),
   ]);
 
   return (
@@ -22,6 +23,7 @@ export default async function OverviewPage() {
       unreadCount={daily.email.unreadCount}
       taskCount={daily.tasks.overdue.length + daily.tasks.today.length}
       snapshots={{ tasks: tasksSnapshot, promises: promisesSnapshot, today: todaySnapshot }}
+      activity={activity}
     />
   );
 }

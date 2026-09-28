@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { RecurrenceEditor, toRecurrenceInput, type RecurrenceValue } from "@/components/tasks/RecurrenceEditor";
 import { usePromiseStore, type PromiseDirection } from "@/lib/stores/promise-store";
 
 export function NewPromiseDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -18,14 +19,21 @@ export function NewPromiseDialog({ open, onClose }: { open: boolean; onClose: ()
 
 function NewPromiseForm({ onClose }: { onClose: () => void }) {
   const fetchPromises = usePromiseStore((s) => s.fetchPromises);
+  const createTaskFromPromise = usePromiseStore((s) => s.createTaskFromPromise);
 
   const [direction, setDirection] = useState<PromiseDirection>("INCOMING");
   const [commitment, setCommitment] = useState("");
   const [personName, setPersonName] = useState("");
   const [personEmail, setPersonEmail] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [recurrence, setRecurrence] = useState<RecurrenceValue | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // A promise to yourself (no person attached) is the case that behaves like
+  // a personal goal — "workout, daily, at 6am" — so only there does it make
+  // sense to also spin up a recurring task in the same step.
+  const isSelfPromise = direction === "OUTGOING" && !personName.trim() && !personEmail.trim();
 
   async function submit() {
     const trimmed = commitment.trim();
@@ -45,12 +53,22 @@ function NewPromiseForm({ onClose }: { onClose: () => void }) {
         dueAt: dueDate ? new Date(`${dueDate}T00:00`).toISOString() : null,
       }),
     });
-    setSubmitting(false);
     if (!res.ok) {
+      setSubmitting(false);
       const body = await res.json().catch(() => ({}));
       setError(body.error ?? "Couldn't create promise.");
       return;
     }
+    const { promise } = await res.json();
+    if (isSelfPromise && recurrence) {
+      const { error: taskError } = await createTaskFromPromise(promise.id, toRecurrenceInput(recurrence));
+      if (taskError) {
+        setSubmitting(false);
+        setError(taskError);
+        return;
+      }
+    }
+    setSubmitting(false);
     await fetchPromises();
     onClose();
   }
@@ -108,13 +126,17 @@ function NewPromiseForm({ onClose }: { onClose: () => void }) {
         <p className="text-xs text-text-secondary">Leave both blank if this is a promise to yourself, like a personal goal.</p>
       )}
 
-      <input
-        type="date"
-        aria-label="Due date"
-        value={dueDate}
-        onChange={(e) => setDueDate(e.target.value)}
-        className="min-h-11 w-fit rounded-lg border border-border bg-surface px-2.5 text-sm text-foreground"
-      />
+      {!(isSelfPromise && recurrence) && (
+        <input
+          type="date"
+          aria-label="Due date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          className="min-h-11 w-fit rounded-lg border border-border bg-surface px-2.5 text-sm text-foreground"
+        />
+      )}
+
+      {isSelfPromise && <RecurrenceEditor value={recurrence} onChange={setRecurrence} />}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

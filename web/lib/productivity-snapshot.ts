@@ -1,9 +1,13 @@
 import { prisma } from "@/lib/db";
 import { derivePromiseStatus } from "@/lib/promises";
-import type { Snapshot } from "@/lib/productivity-snapshot-shared";
+import { activityLevel, type ActivityDay, type Snapshot } from "@/lib/productivity-snapshot-shared";
 
-export type { SnapshotTone, SnapshotSegment, Snapshot } from "@/lib/productivity-snapshot-shared";
+export type { SnapshotTone, SnapshotSegment, Snapshot, ActivityDay } from "@/lib/productivity-snapshot-shared";
 export { snapshotPercentages } from "@/lib/productivity-snapshot-shared";
+
+function toISODate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 // This app's Task model has no "in progress" status (just `completed` +
 // `subtasks`) — a real, non-fabricated proxy: a task counts as in progress
@@ -83,6 +87,48 @@ export async function getPromiseSnapshot(userId: string): Promise<Snapshot> {
     ],
     insight,
   };
+}
+
+// Range starts on the Sunday on/before `weeks` ago, so the graph's first
+// column is always a full week — the calendar component pads leading blanks
+// itself, but starting mid-week here would just waste that first column.
+export async function getActivitySnapshot(userId: string, weeks = 52): Promise<ActivityDay[]> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const since = new Date(today);
+  since.setDate(since.getDate() - (weeks * 7 - 1));
+  since.setDate(since.getDate() - since.getDay());
+
+  const [tasks, promises] = await Promise.all([
+    prisma.task.findMany({
+      where: { userId, completed: true, completedAt: { gte: since } },
+      select: { completedAt: true },
+    }),
+    prisma.promise.findMany({
+      where: { userId, status: "FULFILLED", fulfilledAt: { gte: since } },
+      select: { fulfilledAt: true },
+    }),
+  ]);
+
+  const counts = new Map<string, number>();
+  for (const { completedAt } of tasks) {
+    if (!completedAt) continue;
+    const key = toISODate(completedAt);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  for (const { fulfilledAt } of promises) {
+    if (!fulfilledAt) continue;
+    const key = toISODate(fulfilledAt);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const days: ActivityDay[] = [];
+  for (let d = new Date(since); d <= today; d.setDate(d.getDate() + 1)) {
+    const date = toISODate(d);
+    const count = counts.get(date) ?? 0;
+    days.push({ date, count, level: activityLevel(count) });
+  }
+  return days;
 }
 
 export async function getTodaySnapshot(userId: string): Promise<Snapshot> {

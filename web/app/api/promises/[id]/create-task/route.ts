@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/session";
 import { loadOwnedPromise, linkPromiseToTask } from "@/lib/promises";
-import { createTaskForUser } from "@/lib/tasks";
+import { createTaskForUser, type RecurrenceInput } from "@/lib/tasks";
 
 // "Promise → Task" (spec §10) and "Promise → Calendar" (§11) are the same
 // action here — this app's calendar already shows tasks with a `dueAt`
@@ -21,10 +21,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "already linked to a task" }, { status: 409 });
   }
 
+  const body = await req.json().catch(() => ({}));
+  const recurrence: RecurrenceInput | null = body?.recurrence ?? null;
+
   const result = await createTaskForUser(userId, {
     title: promise.commitment,
     dueAt: promise.dueAt?.toISOString() ?? null,
     sourceEmailId: promise.sourceEmailId ?? undefined,
+    recurrence,
   });
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status });

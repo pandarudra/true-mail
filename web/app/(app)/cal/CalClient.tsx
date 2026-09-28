@@ -11,12 +11,15 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { TaskCard } from "@/components/tasks/TaskCard";
+import { PromiseDetailDialog } from "@/components/promises/PromiseDetailDialog";
+import { STATUS_DOT, formatDue } from "@/components/promises/PromiseList";
 import Cal from "@/components/cal/Cal";
 import { MONTHS } from "@/components/cal/types";
 import { isSameDay, toISODate } from "@/lib/cal";
 import type { Holiday } from "@/lib/holidays/types";
 import { useInboxStore, type Mailbox } from "@/lib/stores/inbox-store";
 import { useTaskStore } from "@/lib/stores/task-store";
+import { usePromiseStore, type PromiseRecord } from "@/lib/stores/promise-store";
 
 const now = new Date();
 
@@ -39,6 +42,9 @@ export function CalClient({ initialMailboxes }: { initialMailboxes: Mailbox[] })
 
   const tasks = useTaskStore((s) => s.tasks);
   const toggleComplete = useTaskStore((s) => s.toggleComplete);
+  const promises = usePromiseStore((s) => s.promises);
+  const [openPromise, setOpenPromise] = useState<PromiseRecord | null>(null);
+  const livePromise = openPromise ? (promises.find((p) => p.id === openPromise.id) ?? null) : null;
 
   // Sidebar's Mailboxes/Labels sections read from inbox-store; this page
   // doesn't otherwise mount InboxClient, the only other place that hydrates
@@ -46,6 +52,7 @@ export function CalClient({ initialMailboxes }: { initialMailboxes: Mailbox[] })
   useLayoutEffect(() => {
     useInboxStore.getState().init(initialMailboxes);
     useTaskStore.getState().init();
+    usePromiseStore.getState().init();
   }, [initialMailboxes]);
 
   useEffect(() => {
@@ -125,6 +132,9 @@ export function CalClient({ initialMailboxes }: { initialMailboxes: Mailbox[] })
   }
 
   const dayTasks = tasks.filter((t) => t.dueAt && isSameDay(new Date(t.dueAt), selectedDate));
+  const dayPromises = promises.filter(
+    (p) => p.dueAt && isSameDay(new Date(p.dueAt), selectedDate) && p.derivedStatus !== "DISMISSED"
+  );
   const dayHolidays = holidaysByDate[toISODate(selectedDate)] ?? [];
   const countryName = countries.find((c) => c.code === country)?.name ?? country ?? "";
   const selectedDueAt = new Date(
@@ -211,7 +221,7 @@ export function CalClient({ initialMailboxes }: { initialMailboxes: Mailbox[] })
                 </button>
               </div>
 
-              {dayHolidays.length === 0 && dayTasks.length === 0 ? (
+              {dayHolidays.length === 0 && dayTasks.length === 0 && dayPromises.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border py-8 text-center">
                   <CalendarBlank size={22} className="text-text-muted" />
                   <p className="text-sm text-text-secondary">Nothing due this day.</p>
@@ -250,6 +260,34 @@ export function CalClient({ initialMailboxes }: { initialMailboxes: Mailbox[] })
                               task={task}
                               onToggleComplete={(completed) => toggleComplete(task.id, completed)}
                             />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {dayPromises.length > 0 && (
+                    <div>
+                      <p className="mb-1 px-1 text-[11px] font-medium uppercase tracking-wide text-text-muted">
+                        Promises
+                      </p>
+                      <ul className="flex flex-col gap-1.5">
+                        {dayPromises.map((promise) => (
+                          <li key={promise.id}>
+                            <button type="button" onClick={() => setOpenPromise(promise)} className="w-full text-left">
+                              <div className="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2 transition-colors hover:bg-surface-subtle">
+                                <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[promise.derivedStatus]}`} />
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm text-foreground">{promise.commitment}</p>
+                                  <p className="truncate text-xs text-text-secondary">
+                                    {promise.direction === "INCOMING"
+                                      ? (promise.personName ?? promise.personEmail ?? "Someone")
+                                      : "You"}
+                                    {" · Due "}
+                                    {formatDue(promise.dueAt!)}
+                                  </p>
+                                </div>
+                              </div>
+                            </button>
                           </li>
                         ))}
                       </ul>
@@ -304,6 +342,7 @@ export function CalClient({ initialMailboxes }: { initialMailboxes: Mailbox[] })
         onClose={() => setCreatingTask(false)}
         defaultDueAt={selectedDueAt}
       />
+      <PromiseDetailDialog promise={livePromise} onClose={() => setOpenPromise(null)} />
     </div>
   );
 }

@@ -12,7 +12,6 @@ import {
 } from "@phosphor-icons/react";
 import { DrawablyCard, DrawablyCircle, DrawablyDivider } from "drawably/react";
 import { BrandMark } from "@/components/BrandMark";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { AskInbox } from "@/components/ai/AskInbox";
 import { AdvancedSearchModal } from "@/components/AdvancedSearchModal";
 import { TaskSearchBar } from "@/components/tasks/TaskSearchBar";
@@ -51,6 +50,7 @@ export function TopBar({
   const pathname = usePathname();
   const onTasks = pathname === "/tasks";
   const onCal = pathname === "/cal";
+  const onInbox = pathname === "/inbox";
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [telegramConnected, setTelegramConnected] = useState<boolean | null>(
@@ -58,6 +58,7 @@ export function TopBar({
   );
   const isDark = useThemeStore((s) => s.isDark);
   const toggleTheme = useThemeStore((s) => s.toggle);
+  const syncThemeFromDom = useThemeStore((s) => s.syncFromDom);
 
   useEffect(() => {
     if (!menuOpen || telegramConnected !== null) return;
@@ -66,6 +67,12 @@ export function TopBar({
       .then((data) => setTelegramConnected(data?.connected ?? false))
       .catch(() => setTelegramConnected(false));
   }, [menuOpen, telegramConnected]);
+
+  // Picks up the class the blocking inline script in layout.tsx already
+  // applied before paint — see theme-store.ts's syncFromDom doc.
+  useEffect(() => {
+    syncThemeFromDom();
+  }, [syncThemeFromDom]);
 
   async function handleSignOut() {
     await authClient.signOut();
@@ -84,13 +91,7 @@ export function TopBar({
           <List size={20} />
         </button>
         <BrandMark className="hidden sm:flex" />
-        {onTasks ? (
-          <TaskSearchBar />
-        ) : onCal ? (
-          <div className="min-w-0 flex-1" />
-        ) : (
-          <AskInbox />
-        )}
+        {onTasks ? <TaskSearchBar /> : onInbox ? <AskInbox /> : <div className="min-w-0 flex-1" />}
         {onCal && calMonthIndex !== undefined && calYear !== undefined && (
           <div className="hidden shrink-0 gap-1.5 sm:flex">
             <Select
@@ -119,7 +120,7 @@ export function TopBar({
             </Select>
           </div>
         )}
-        {!onCal && (
+        {(onTasks || onInbox) && (
           <IconButton
             label="Search options"
             onClick={() => setSearchModalOpen(true)}
@@ -127,24 +128,18 @@ export function TopBar({
             <FunnelSimple size={16} />
           </IconButton>
         )}
-        {!onCal &&
-          (onTasks ? (
-            <AdvancedTaskSearchModal
-              open={searchModalOpen}
-              onClose={() => setSearchModalOpen(false)}
-            />
-          ) : (
-            <AdvancedSearchModal
-              open={searchModalOpen}
-              onClose={() => setSearchModalOpen(false)}
-            />
-          ))}
-        {/* Moved into the account menu's "General" section on mobile to
-            de-clutter the top bar; still here as a quick-access icon on
-            desktop, where there's room. */}
-        <div className="hidden lg:block">
-          <ThemeToggle />
-        </div>
+        {onTasks && (
+          <AdvancedTaskSearchModal
+            open={searchModalOpen}
+            onClose={() => setSearchModalOpen(false)}
+          />
+        )}
+        {onInbox && (
+          <AdvancedSearchModal
+            open={searchModalOpen}
+            onClose={() => setSearchModalOpen(false)}
+          />
+        )}
         <div className="relative shrink-0">
           <button
             type="button"
@@ -170,7 +165,11 @@ export function TopBar({
               type="button"
               aria-label="Close menu"
               onClick={() => setMenuOpen(false)}
-              className="fixed inset-0 z-30 cursor-default bg-black/40 lg:bg-transparent"
+              // z-30 sits above the mobile drawer's backdrop, but the desktop
+              // dropdown below is lg:z-20 — without lg:z-10 here, this
+              // full-viewport click-outside layer sat on top of it there and
+              // ate every click meant for a menu item.
+              className="fixed inset-0 z-30 cursor-default bg-black/40 lg:z-10 lg:bg-transparent"
             />
           )}
           {/* Same fixed-drawer/lg:static-dropdown split as Sidebar.tsx's mobile

@@ -22,8 +22,9 @@ const FILTERS: { id: PromiseFilter; label: string }[] = [
 ];
 
 // Same status-color convention used for TaskCard's priority accent and the
-// Productivity Snapshot: emerald=good, amber=warning, red=critical.
-const STATUS_DOT: Record<string, string> = {
+// Productivity Snapshot: emerald=good, amber=warning, red=critical. Exported
+// for CalClient's day-list promise rows, so the color mapping lives in one place.
+export const STATUS_DOT: Record<string, string> = {
   ACTIVE: "bg-slate-400",
   DUE_SOON: "bg-amber-500",
   OVERDUE: "bg-red-600",
@@ -31,7 +32,7 @@ const STATUS_DOT: Record<string, string> = {
   DISMISSED: "bg-slate-300",
 };
 
-function formatDue(iso: string): string {
+export function formatDue(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
