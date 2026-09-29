@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { runToolLoop, type ToolHandlerMap } from "./orchestrator";
+import { runToolLoop, toUtcIso, type ToolHandlerMap } from "./orchestrator";
 import type { ChatTurn } from "./orchestrator-shared";
 import type { ChatFn, ToolDef } from "./nvidia";
 
@@ -152,5 +152,58 @@ describe("runToolLoop", () => {
       { type: "create_task", label: "Create task: Send proposal", params: { title: "Send proposal" } },
     ]);
     expect(createTask).not.toHaveBeenCalled();
+  });
+
+  it("does not crash when a tool call's arguments parse to a non-object (e.g. JSON `null`)", async () => {
+    const chatFn: ChatFn = vi
+      .fn()
+      .mockResolvedValueOnce({ toolCalls: [{ id: "call_1", name: "propose_task", rawArguments: "null" }] })
+      .mockResolvedValueOnce({ content: "Handled it." });
+    const result = await runToolLoop("user-1", [turn("user", "do it")], {
+      chatFn,
+      handlers: { propose_task: vi.fn().mockResolvedValue({ noted: true }) },
+      tools: NO_TOOLS,
+      systemPrompt: "system",
+    });
+    expect(result.message).toBe("Handled it.");
+  });
+
+  it("does not produce a suggested action for a propose_* call whose arguments failed to parse", async () => {
+    const chatFn: ChatFn = vi
+      .fn()
+      .mockResolvedValueOnce({ toolCalls: [{ id: "call_1", name: "propose_task", rawArguments: "not json" }] })
+      .mockResolvedValueOnce({ content: "Sorry, couldn't do that." });
+    const propose = vi.fn().mockResolvedValue({ noted: true });
+    const result = await runToolLoop("user-1", [turn("user", "do it")], {
+      chatFn,
+      handlers: { propose_task: propose },
+      tools: NO_TOOLS,
+      systemPrompt: "system",
+    });
+    expect(result.actions).toEqual([]);
+    expect(propose).not.toHaveBeenCalled();
+  });
+});
+
+describe("toUtcIso", () => {
+  it("converts a bare local date to midnight UTC in that offset", () => {
+    // timezoneOffsetMinutes matches Date.getTimezoneOffset(): positive west
+    // of UTC. -330 = UTC+5:30 (IST) — local midnight is the previous day
+    // 18:30 UTC.
+    expect(toUtcIso("2026-09-30", -330)).toBe("2026-09-29T18:30:00.000Z");
+  });
+
+  it("converts a local datetime to the matching UTC instant", () => {
+    expect(toUtcIso("2026-09-30T09:00:00", -330)).toBe("2026-09-30T03:30:00.000Z");
+  });
+
+  it("returns null for an unparseable date instead of throwing", () => {
+    expect(toUtcIso("not a date", 0)).toBeNull();
+  });
+
+  it("returns null for an empty or missing value", () => {
+    expect(toUtcIso("", 0)).toBeNull();
+    expect(toUtcIso(undefined, 0)).toBeNull();
+    expect(toUtcIso(null, 0)).toBeNull();
   });
 });

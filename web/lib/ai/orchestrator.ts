@@ -3,7 +3,26 @@ import { searchEmailsForUser, loadOwnedEmail } from "@/lib/emails";
 import { emailBodyText } from "@/lib/email-text";
 import { getTasksForUser, createTaskForUser, completeTaskForUser } from "@/lib/tasks";
 import { searchPromisesForUser, createPromiseForUser } from "@/lib/promises";
+import { localNaiveToUtcIso } from "@/lib/ai/local-datetime";
 import type { ChatResult, ChatTurn, Citation, ProposedAction } from "./orchestrator-shared";
+
+// The model reasons about dates as local wall-clock time ("tomorrow",
+// "next Friday"), so every date it's asked for is a LOCAL naive datetime
+// ("YYYY-MM-DD" or "YYYY-MM-DDTHH:mm:ss", no timezone suffix) — same
+// convention lib/ai/parse-task.ts already uses — converted to a real UTC
+// instant here via pure arithmetic rather than asking the model to also
+// get the UTC conversion right. Returns null (not a throw) for anything
+// that isn't a non-empty, parseable date string, so a malformed date from
+// the model degrades to "no date" instead of crashing the tool call.
+export function toUtcIso(value: unknown, timezoneOffsetMinutes: number): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const naive = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value;
+  try {
+    return localNaiveToUtcIso(naive, timezoneOffsetMinutes);
+  } catch {
+    return null;
+  }
+}
 
 export type { ChatResult, ChatTurn, Citation, ProposedAction } from "./orchestrator-shared";
 
@@ -86,17 +105,29 @@ export async function runToolLoop(
     for (const call of result.toolCalls) {
       let parsedArgs: Record<string, unknown> = {};
       let output: unknown;
+      let succeeded = false;
       try {
-        parsedArgs = call.rawArguments ? JSON.parse(call.rawArguments) : {};
+        const raw = call.rawArguments ? JSON.parse(call.rawArguments) : {};
+        if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+          throw new Error("tool arguments must be a JSON object");
+        }
+        parsedArgs = raw as Record<string, unknown>;
         const handler = opts.handlers[call.name];
         if (!handler) throw new Error(`unknown tool: ${call.name}`);
         output = await handler(userId, parsedArgs);
+        succeeded = true;
       } catch (err) {
         output = { error: err instanceof Error ? err.message : "tool call failed" };
       }
 
-      collectCitations(call.name, output, citations);
-      collectProposedAction(call.name, parsedArgs, actions);
+      // Only a successful call's result becomes a citation or a suggested
+      // action — a failed search shouldn't cite anything, and a failed
+      // propose_* shouldn't leave the user a button that POSTs empty/garbage
+      // params and can never succeed.
+      if (succeeded) {
+        collectCitations(call.name, output, citations);
+        collectProposedAction(call.name, parsedArgs, actions);
+      }
 
       messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(output) });
     }
@@ -109,7 +140,12 @@ export async function runToolLoop(
   };
 }
 
-const SYSTEM_PROMPT = `You are Ask AI, TrueMail's assistant. You have tools to search and read the user's emails, and to search, create, and complete their tasks and promises, and to look up their calendar (scheduled tasks — TrueMail has no separate events model, a task with a due date is a calendar entry).
+function buildSystemPrompt(localNow: Date): string {
+  const today = localNow.toISOString().slice(0, 10);
+  const weekday = localNow.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+  return `You are Ask AI, TrueMail's assistant. You have tools to search and read the user's emails, and to search, create, and complete their tasks and promises, and to look up their calendar (scheduled tasks — TrueMail has no separate events model, a task with a due date is a calendar entry).
+
+Today's date is ${today}, a ${weekday}. Resolve relative dates ("tomorrow", "next Friday", "this week") against that. Whenever a tool takes a date (dueAt, fromDate, toDate), give it as a LOCAL date or datetime — "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm:ss" — never UTC, never with a timezone suffix.
 
 Rules:
 - Always call a tool to look up current data before answering a question about the user's emails, tasks, promises, or schedule. Never guess or invent information.
@@ -117,6 +153,9 @@ Rules:
 - Only call create_task or create_promise when the user has explicitly asked you to create, add, or track something. When you are just listing or summarizing things you found, call propose_task or propose_promise instead for each one you'd suggest (or make no such call if there's nothing worth suggesting) — never call both a create and a propose tool for the same thing in one turn.
 - When you use information from a specific email to answer, make sure you reached it via search_emails or get_email so its source can be shown to the user.
 - Keep answers concise — a few sentences, not an essay.`;
+}
+
+const LOCAL_DATE_DESC = 'Local date, "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm:ss" — never UTC, never with a timezone suffix.';
 
 const TOOL_DEFS: ToolDef[] = [
   {
@@ -158,7 +197,7 @@ const TOOL_DEFS: ToolDef[] = [
       type: "object",
       properties: {
         title: { type: "string" },
-        dueAt: { type: "string", description: "ISO date, optional." },
+        dueAt: { type: "string", description: LOCAL_DATE_DESC },
         priority: { type: "string", enum: ["LOW", "NORMAL", "HIGH", "URGENT"] },
         description: { type: "string" },
       },
@@ -173,7 +212,7 @@ const TOOL_DEFS: ToolDef[] = [
       type: "object",
       properties: {
         title: { type: "string" },
-        dueAt: { type: "string" },
+        dueAt: { type: "string", description: LOCAL_DATE_DESC },
         priority: { type: "string", enum: ["LOW", "NORMAL", "HIGH", "URGENT"] },
         description: { type: "string" },
       },
@@ -210,7 +249,7 @@ const TOOL_DEFS: ToolDef[] = [
         commitment: { type: "string" },
         personName: { type: "string" },
         personEmail: { type: "string" },
-        dueAt: { type: "string" },
+        dueAt: { type: "string", description: LOCAL_DATE_DESC },
       },
       required: ["direction", "commitment"],
     },
@@ -226,7 +265,7 @@ const TOOL_DEFS: ToolDef[] = [
         commitment: { type: "string" },
         personName: { type: "string" },
         personEmail: { type: "string" },
-        dueAt: { type: "string" },
+        dueAt: { type: "string", description: LOCAL_DATE_DESC },
       },
       required: ["direction", "commitment"],
     },
@@ -238,14 +277,15 @@ const TOOL_DEFS: ToolDef[] = [
     parameters: {
       type: "object",
       properties: {
-        fromDate: { type: "string", description: "ISO date, defaults to today." },
-        toDate: { type: "string", description: "ISO date, defaults to 7 days after fromDate." },
+        fromDate: { type: "string", description: `${LOCAL_DATE_DESC} Defaults to today.` },
+        toDate: { type: "string", description: `${LOCAL_DATE_DESC} Defaults to fromDate (i.e. just that one day).` },
       },
     },
   },
 ];
 
-const TOOL_HANDLERS: ToolHandlerMap = {
+function buildToolHandlers(timezoneOffsetMinutes: number): ToolHandlerMap {
+  return {
   search_emails: async (userId, args) =>
     searchEmailsForUser(userId, {
       query: typeof args.query === "string" ? args.query : undefined,
@@ -277,7 +317,7 @@ const TOOL_HANDLERS: ToolHandlerMap = {
   create_task: async (userId, args) =>
     createTaskForUser(userId, {
       title: String(args.title ?? ""),
-      dueAt: typeof args.dueAt === "string" ? args.dueAt : null,
+      dueAt: toUtcIso(args.dueAt, timezoneOffsetMinutes),
       priority: typeof args.priority === "string" ? args.priority : undefined,
       description: typeof args.description === "string" ? args.description : null,
     }),
@@ -308,26 +348,39 @@ const TOOL_HANDLERS: ToolHandlerMap = {
       commitment: String(args.commitment ?? ""),
       personName: typeof args.personName === "string" ? args.personName : null,
       personEmail: typeof args.personEmail === "string" ? args.personEmail : null,
-      dueAt: typeof args.dueAt === "string" ? args.dueAt : null,
+      dueAt: toUtcIso(args.dueAt, timezoneOffsetMinutes),
     }),
 
   propose_promise: async () => ({ noted: true }),
 
+  // fromDate/toDate default to today (local) and the end date is treated
+  // as inclusive of that whole local day — "what's on my calendar
+  // tomorrow" with fromDate===toDate should match tasks due any time
+  // during that day, not just at exactly local midnight.
   search_calendar: async (userId, args) => {
     const all = await getTasksForUser(userId);
-    const from = typeof args.fromDate === "string" ? new Date(args.fromDate) : new Date();
-    const to = typeof args.toDate === "string" ? new Date(args.toDate) : new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const localNow = new Date(Date.now() - timezoneOffsetMinutes * 60000);
+    const todayLocal = localNow.toISOString().slice(0, 10);
+    const fromArg = typeof args.fromDate === "string" && args.fromDate.trim() ? args.fromDate : todayLocal;
+    const toArg = typeof args.toDate === "string" && args.toDate.trim() ? args.toDate : fromArg;
+    const fromIso = toUtcIso(fromArg, timezoneOffsetMinutes);
+    const toIso = toUtcIso(/^\d{4}-\d{2}-\d{2}$/.test(toArg) ? `${toArg}T23:59:59` : toArg, timezoneOffsetMinutes);
+    if (!fromIso || !toIso) return { error: "invalid date" };
+    const from = new Date(fromIso);
+    const to = new Date(toIso);
     return all
       .filter((t) => t.dueAt && t.dueAt >= from && t.dueAt <= to)
       .map((t) => ({ id: t.id, title: t.title, dueAt: t.dueAt, completed: t.completed }));
   },
-};
+  };
+}
 
-export async function runAssistant(userId: string, turns: ChatTurn[]): Promise<ChatResult> {
+export async function runAssistant(userId: string, turns: ChatTurn[], timezoneOffsetMinutes = 0): Promise<ChatResult> {
+  const localNow = new Date(Date.now() - timezoneOffsetMinutes * 60000);
   return runToolLoop(userId, turns, {
     chatFn: chatWithTools,
-    handlers: TOOL_HANDLERS,
+    handlers: buildToolHandlers(timezoneOffsetMinutes),
     tools: TOOL_DEFS,
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt: buildSystemPrompt(localNow),
   });
 }

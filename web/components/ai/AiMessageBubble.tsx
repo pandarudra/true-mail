@@ -15,12 +15,16 @@ function ActionButton({ action }: { action: ProposedAction }) {
   async function run() {
     setState("creating");
     const url = action.type === "create_task" ? "/api/tasks" : "/api/promises";
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(action.params),
-    });
-    setState(res.ok ? "done" : "error");
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(action.params),
+      });
+      setState(res.ok ? "done" : "error");
+    } catch {
+      setState("error");
+    }
   }
 
   return (

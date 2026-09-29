@@ -36,23 +36,32 @@ export function AskAiClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
       .filter((t): t is Extract<DisplayTurn, { role: "user" | "assistant" }> => t.role === "user" || t.role === "assistant")
       .map((t) => ({ role: t.role, content: t.content }));
 
-    const res = await fetch("/api/ai/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: history }),
-    });
+    // A dropped connection or a non-JSON response (e.g. a dev-server
+    // restart) must not leave the chat stuck on "Thinking…" forever — every
+    // exit from this request, including a thrown one, clears loading and
+    // surfaces something the user can act on.
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: history, timezoneOffsetMinutes: new Date().getTimezoneOffset() }),
+      });
 
-    setLoading(false);
-    if (!res.ok) {
-      const errorMessage = await readError(res);
-      setTurns((prev) => [...prev, { role: "error", content: errorMessage }]);
-      return;
+      if (!res.ok) {
+        const errorMessage = await readError(res);
+        setTurns((prev) => [...prev, { role: "error", content: errorMessage }]);
+        return;
+      }
+      const result = await res.json();
+      setTurns((prev) => [
+        ...prev,
+        { role: "assistant", content: result.message, citations: result.citations ?? [], actions: result.actions ?? [] },
+      ]);
+    } catch {
+      setTurns((prev) => [...prev, { role: "error", content: "Couldn't reach the server. Check your connection and try again." }]);
+    } finally {
+      setLoading(false);
     }
-    const result = await res.json();
-    setTurns((prev) => [
-      ...prev,
-      { role: "assistant", content: result.message, citations: result.citations ?? [], actions: result.actions ?? [] },
-    ]);
   }
 
   const started = turns.length > 0;

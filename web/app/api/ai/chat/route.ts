@@ -27,9 +27,10 @@ export async function POST(req: Request) {
   if (!isValidTurns(body?.messages)) {
     return NextResponse.json({ error: "messages is required" }, { status: 400 });
   }
+  const timezoneOffsetMinutes = typeof body?.timezoneOffsetMinutes === "number" ? body.timezoneOffsetMinutes : 0;
 
   try {
-    const result = await runAssistant(userId, body.messages);
+    const result = await runAssistant(userId, body.messages, timezoneOffsetMinutes);
     return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: "AI is temporarily unavailable. Please try again." }, { status: 502 });
