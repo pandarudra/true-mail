@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isChitChat, runToolLoop, toUtcIso, type ToolHandlerMap } from "./orchestrator";
+import { isChitChat, isLeakedToolCall, runToolLoop, toUtcIso, type ToolHandlerMap } from "./orchestrator";
 import type { ChatTurn } from "./orchestrator-shared";
 import type { ChatFn, ToolDef } from "./nvidia";
 
@@ -20,6 +20,20 @@ describe("runToolLoop", () => {
     });
     expect(result).toEqual({ message: "Hello there.", citations: [], actions: [] });
     expect(chatFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to the apology message instead of showing a leaked tool-call blob as the answer", async () => {
+    const chatFn: ChatFn = vi
+      .fn()
+      .mockResolvedValue({ content: '{"name": "search_emails", "parameters": {"query": "respond"}}' });
+    const result = await runToolLoop("user-1", [turn("user", "what emails need a reply?")], {
+      chatFn,
+      handlers: {},
+      tools: NO_TOOLS,
+      systemPrompt: "system",
+    });
+    expect(result.message).toMatch(/rabbit hole/);
+    expect(result.message).not.toContain('"name"');
   });
 
   it("executes a tool call, feeds the result back, and returns the final answer", async () => {
@@ -108,6 +122,39 @@ describe("runToolLoop", () => {
     });
     expect(chatFn).toHaveBeenCalledTimes(3);
     expect(result.message).toMatch(/rabbit hole/);
+    // The final call must have asked for a text-only response — a mock
+    // that ignores tool_choice (like this one) is the true worst case,
+    // which is exactly what this test is pinning.
+    const lastCallArgs = (chatFn as ReturnType<typeof vi.fn>).mock.calls[2][0];
+    expect(lastCallArgs.toolChoice).toBe("none");
+  });
+
+  it("forces a real final answer on the last iteration instead of exhausting the budget on tool calls", async () => {
+    // Reproduces the live-observed failure: the model keeps calling tools
+    // (never settling on an answer) right up to the cap. Forcing
+    // tool_choice: "none" on the final call must make it answer with
+    // whatever it has gathered, instead of falling through to the generic
+    // apology message.
+    const chatFn: ChatFn = vi
+      .fn()
+      .mockResolvedValueOnce({ toolCalls: [{ id: "call_1", name: "search_emails", rawArguments: "{}" }] })
+      .mockResolvedValueOnce({ toolCalls: [{ id: "call_2", name: "search_emails", rawArguments: "{}" }] })
+      .mockImplementationOnce(async (opts) => {
+        // A well-behaved model honors tool_choice: "none" by answering.
+        return opts.toolChoice === "none"
+          ? { content: "Here's what I found so far." }
+          : { toolCalls: [{ id: "call_3", name: "search_emails", rawArguments: "{}" }] };
+      });
+    const handlers: ToolHandlerMap = { search_emails: vi.fn().mockResolvedValue([]) };
+    const result = await runToolLoop("user-1", [turn("user", "what emails need a reply?")], {
+      chatFn,
+      handlers,
+      tools: NO_TOOLS,
+      systemPrompt: "system",
+      maxIterations: 3,
+    });
+    expect(result.message).toBe("Here's what I found so far.");
+    expect(chatFn).toHaveBeenCalledTimes(3);
   });
 
   it("de-dupes citations by email id across both search_emails and get_email calls", async () => {
@@ -214,6 +261,9 @@ describe("isChitChat", () => {
     expect(isChitChat("Hi!")).toBe(true);
     expect(isChitChat("hello")).toBe(true);
     expect(isChitChat("hey there")).toBe(true);
+    expect(isChitChat("hello tomy")).toBe(true);
+    expect(isChitChat("hi tomy!")).toBe(true);
+    expect(isChitChat("hey tomy")).toBe(true);
     expect(isChitChat("good morning")).toBe(true);
     expect(isChitChat("how are you?")).toBe(true);
     expect(isChitChat("thanks!")).toBe(true);
@@ -227,5 +277,27 @@ describe("isChitChat", () => {
     expect(isChitChat("what emails do I have")).toBe(false);
     expect(isChitChat("any promises due today")).toBe(false);
     expect(isChitChat("create a task to do laundry")).toBe(false);
+  });
+});
+
+describe("isLeakedToolCall", () => {
+  // Live-reproduced: forced onto tool_choice:"none" with nothing left to
+  // call, this model sometimes writes out the tool call it wanted to make
+  // as JSON text instead of actually answering in words — e.g. exactly
+  // {"name": "search_emails", "parameters": {"query": "respond", ...}}.
+  // That must never reach the user as if it were a real answer.
+  it("recognizes a tool-call-shaped JSON blob standing in for an answer", () => {
+    expect(isLeakedToolCall('{"name": "search_emails", "parameters": {"query": "respond"}}')).toBe(true);
+    expect(isLeakedToolCall('{"name":"complete_task","arguments":{"id":"123"}}')).toBe(true);
+  });
+
+  it("does not misclassify a real natural-language answer", () => {
+    expect(isLeakedToolCall("Here's what I found so far.")).toBe(false);
+    expect(isLeakedToolCall("You have 3 tasks due today.")).toBe(false);
+    expect(isLeakedToolCall("")).toBe(false);
+  });
+
+  it("does not misclassify an answer that happens to mention JSON-like data in prose", () => {
+    expect(isLeakedToolCall('The invoice total is {"amount": 245} according to the email.')).toBe(false);
   });
 });

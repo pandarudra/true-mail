@@ -30,7 +30,25 @@ export type ChatMessage =
 
 export type ToolCallResult = { content: string } | { toolCalls: ToolCall[] };
 
-export type ChatFn = (opts: { messages: ChatMessage[]; tools: ToolDef[]; maxTokens: number }) => Promise<ToolCallResult>;
+export type ChatFn = (opts: {
+  messages: ChatMessage[];
+  tools: ToolDef[];
+  maxTokens: number;
+  toolChoice?: "auto" | "none";
+}) => Promise<ToolCallResult>;
+
+// NVIDIA's endpoint occasionally returns a transient 5xx ("Inference
+// connection error") on an otherwise-valid request — reproduced live, not
+// hypothetical. One retry after a short delay is enough to recover from
+// these without adding real latency for the (overwhelmingly common) case
+// where the first call just works. A 4xx is never retried — that's a
+// request problem, not a transient one, and retrying it just wastes time.
+async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  const res = await fetch(url, init);
+  if (res.ok || res.status < 500) return res;
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  return fetch(url, init);
+}
 
 async function complete(opts: ChatOpts): Promise<string> {
   const apiKey = process.env.NVIDIA_API_KEY;
@@ -38,7 +56,7 @@ async function complete(opts: ChatOpts): Promise<string> {
     throw new Error("NVIDIA_API_KEY is not set");
   }
 
-  const res = await fetch(NVIDIA_API_URL, {
+  const res = await fetchWithRetry(NVIDIA_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -71,13 +89,14 @@ export async function chatWithTools(opts: {
   messages: ChatMessage[];
   tools: ToolDef[];
   maxTokens: number;
+  toolChoice?: "auto" | "none";
 }): Promise<ToolCallResult> {
   const apiKey = process.env.NVIDIA_API_KEY;
   if (!apiKey) {
     throw new Error("NVIDIA_API_KEY is not set");
   }
 
-  const res = await fetch(NVIDIA_API_URL, {
+  const res = await fetchWithRetry(NVIDIA_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -92,7 +111,7 @@ export async function chatWithTools(opts: {
         type: "function",
         function: { name: t.name, description: t.description, parameters: t.parameters },
       })),
-      tool_choice: "auto",
+      tool_choice: opts.toolChoice ?? "auto",
     }),
   });
 

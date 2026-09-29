@@ -27,13 +27,16 @@ export function toUtcIso(value: unknown, timezoneOffsetMinutes: number): string 
 // A small 11B instruct model under tool_choice:"auto" with ten tools on
 // offer reliably ignores a "don't call a tool for a bare greeting" prompt
 // instruction — verified live, it still burns the whole iteration budget
-// searching for something to do with "hi". Prompt wording alone isn't
-// reliable enough here, so greetings/small talk are routed around the
-// tool loop entirely by a deterministic match instead. Deliberately a
-// narrow whitelist of near-exact phrases, not a "message is short" check —
-// a short real question ("tasks?") must still reach the tools.
+// searching for something to do with "hi" (and once, for "hello tomy"
+// before this pattern covered it, actually called complete_task on an
+// unrelated task — a greeting must never reach a write tool). Prompt
+// wording alone isn't reliable enough here, so greetings/small talk are
+// routed around the tool loop entirely by a deterministic match instead.
+// Deliberately a narrow whitelist of near-exact phrases, not a "message is
+// short" check — a short real question ("tasks?") must still reach the
+// tools.
 const CHITCHAT_PATTERNS: RegExp[] = [
-  /^h(i+|ey+|ello+)( there)?$/,
+  /^h(i+|ey+|ello+)( there)?(,? tomy)?$/,
   /^(good )?(morning|afternoon|evening|night)$/,
   /^how('s| is| are) (it going|things|you( doing)?)$/,
   /^what'?s up$/,
@@ -53,11 +56,39 @@ export function isChitChat(message: string): boolean {
   return CHITCHAT_PATTERNS.some((re) => re.test(normalized));
 }
 
+// Live-reproduced: forced onto tool_choice: "none" with nothing left to
+// call, this model sometimes writes out the tool call it still wanted to
+// make as a JSON blob instead of actually answering — e.g. exactly
+// {"name": "search_emails", "parameters": {"query": "respond"}}. Parses as
+// valid JSON but is never a real answer, so it's detected structurally
+// (object with a "name" plus "parameters"/"arguments") rather than by
+// guessing at wording — a real answer that happens to mention JSON data in
+// prose ("...total is {\"amount\": 245}...") isn't itself valid JSON when
+// parsed whole, so it doesn't match.
+export function isLeakedToolCall(content: string): boolean {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith("{")) return false;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      typeof parsed.name === "string" &&
+      ("parameters" in parsed || "arguments" in parsed)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export type { ChatResult, ChatTurn, Citation, ProposedAction } from "./orchestrator-shared";
 
 export type ToolHandlerMap = Record<string, (userId: string, args: Record<string, unknown>) => Promise<unknown>>;
 
 const DEFAULT_MAX_ITERATIONS = 6;
+
+const COULDNT_FINISH_MESSAGE =
+  "Hmm, that one got away from me — I went down a rabbit hole and didn't land on an answer. Mind asking it again, maybe a bit more specific? I'll get it this time!";
 
 function isEmailLike(value: unknown): value is { id: string; from: string; subject: string; snippet?: string; body?: string } {
   return (
@@ -115,10 +146,28 @@ export async function runToolLoop(
   const actions: ProposedAction[] = [];
 
   for (let i = 0; i < maxIterations; i++) {
-    const result = await opts.chatFn({ messages, tools: opts.tools, maxTokens: 700 });
+    // On the last allowed round, force a text answer instead of letting the
+    // model spend it on yet another tool call. Verified live against this
+    // model: with ten tools always on offer, it doesn't reliably self-limit
+    // on prompt wording alone — for a scattered enough question it burns
+    // every iteration calling tools and never gets a turn to answer,
+    // landing on the generic fallback below even though it had gathered
+    // real citations along the way. tool_choice: "none" makes that
+    // impossible: the model can't call anything, so it must synthesize
+    // from whatever's already in the transcript.
+    const isFinalRound = i === maxIterations - 1;
+    const result = await opts.chatFn({
+      messages,
+      tools: opts.tools,
+      maxTokens: 700,
+      toolChoice: isFinalRound ? "none" : "auto",
+    });
 
     if ("content" in result) {
-      return { message: result.content, citations: [...citations.values()], actions };
+      // A "content" response the model gave while it still wanted to call a
+      // tool (see isLeakedToolCall) is not an answer — never show it as one.
+      const message = isLeakedToolCall(result.content) ? COULDNT_FINISH_MESSAGE : result.content;
+      return { message, citations: [...citations.values()], actions };
     }
 
     messages.push({
@@ -163,8 +212,7 @@ export async function runToolLoop(
   }
 
   return {
-    message:
-      "Hmm, that one got away from me — I went down a rabbit hole and didn't land on an answer. Mind asking it again, maybe a bit more specific? I'll get it this time!",
+    message: COULDNT_FINISH_MESSAGE,
     citations: [...citations.values()],
     actions,
   };
@@ -182,10 +230,14 @@ Only once the user asks something that actually needs their TrueMail data do the
 Today's date is ${today}, a ${weekday}. Resolve relative dates ("tomorrow", "next Friday", "this week") against that. Whenever a tool takes a date (dueAt, fromDate, toDate), give it as a LOCAL date or datetime — "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm:ss" — never UTC, never with a timezone suffix.
 
 Rules:
+- Stay in the domain the question is actually about. A question about emails only needs search_emails/get_email — don't also check the calendar, tasks, or promises just because a word like "today" appears. A question about tasks only needs the task tools, and so on. Only reach across domains when the user's question genuinely spans them (e.g. "turn my unread emails into tasks").
+- One search_emails call is usually enough — it already returns subject, sender, and a snippet for up to 20 emails, which is normally enough to judge and answer from. Only call get_email when you need one specific email's full body, and only call search_emails again if the first call's results genuinely don't cover the question (a different folder, a different keyword) — never repeat the same kind of search hoping for a different result.
+- For a broad question ("what emails need a reply", "what's new", "anything important") don't invent a narrow query keyword to search for — words like "respond" or "reply" describe what the USER wants to do, they're not text that appears in the emails themselves, and searching for them finds nothing. Call search_emails with no query at all to get the most recent emails, then use your own judgment on which ones matter. Only pass a query when the user actually named something to search for (a person, a subject, a project).
+- If a tool call comes back empty or unhelpful, that's information too — don't call the exact same tool with the exact same arguments again hoping for a different result. Either try a genuinely different approach (a broader search, no filter at all) or answer with what you have, honestly noting what you didn't find.
 - For a real question about the user's data, call a tool to look it up before answering. Never guess or invent information.
 - Write like you're talking to a person, not filing a report: contractions are fine, a little personality is good, but stay clear and get to the point — no corporate throat-clearing.
 - Never mention tool or function names, or say that you're "calling a tool" — just do it and talk about what you found.
-- Only call create_task or create_promise when the user has explicitly asked you to create, add, or track something. When you are just listing or summarizing things you found, call propose_task or propose_promise instead for each one you'd suggest (or make no such call if there's nothing worth suggesting) — never call both a create and a propose tool for the same thing in one turn.
+- Only call create_task, create_promise, or complete_task when the user has explicitly asked for that specific action in this message. Never call one of these as a side effect of exploring, searching, or answering something else — if you're not sure the user asked for it, don't call it. When you are just listing or summarizing things you found, call propose_task or propose_promise instead for each one you'd suggest (or make no such call if there's nothing worth suggesting) — never call both a create and a propose tool for the same thing in one turn.
 - When you use information from a specific email to answer, make sure you reached it via search_emails or get_email so its source can be shown to the user.
 - Keep answers concise — a few sentences, not an essay.`;
 }
