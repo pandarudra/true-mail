@@ -102,7 +102,7 @@ describe("chatWithTools", () => {
     expect(result).toEqual({ content: "Here is your answer." });
   });
 
-  it("sends tool_choice: none when toolChoice: \"none\" is passed, forcing a text-only response", async () => {
+  it("omits tools entirely when toolChoice: \"none\" is passed, forcing a text-only response", async () => {
     process.env.NVIDIA_API_KEY = "test-key";
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -119,7 +119,8 @@ describe("chatWithTools", () => {
     });
     expect(result).toEqual({ content: "Forced final answer." });
     const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(sentBody.tool_choice).toBe("none");
+    expect(sentBody.tools).toBeUndefined();
+    expect(sentBody.tool_choice).toBeUndefined();
   });
 
   it("defaults tool_choice to auto when toolChoice is omitted", async () => {

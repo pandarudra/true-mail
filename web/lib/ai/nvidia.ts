@@ -107,11 +107,18 @@ export async function chatWithTools(opts: {
       messages: opts.messages,
       max_tokens: opts.maxTokens,
       temperature: 0.2,
-      tools: opts.tools.map((t) => ({
-        type: "function",
-        function: { name: t.name, description: t.description, parameters: t.parameters },
-      })),
-      tool_choice: opts.toolChoice ?? "auto",
+      // With tools still listed, this model ignores tool_choice "none" and
+      // writes the next tool call out as JSON text — only omitting the tools
+      // entirely reliably gets a plain-text answer.
+      ...(opts.toolChoice === "none"
+        ? {}
+        : {
+            tools: opts.tools.map((t) => ({
+              type: "function",
+              function: { name: t.name, description: t.description, parameters: t.parameters },
+            })),
+            tool_choice: opts.toolChoice ?? "auto",
+          }),
     }),
   });
 

@@ -20,20 +20,22 @@ export async function searchEmailsForUser(
   opts: { query?: string; folder?: string; limit?: number } = {}
 ): Promise<EmailSearchResult[]> {
   const limit = Math.min(Math.max(opts.limit ?? 10, 1), 20);
+  // Every word must appear somewhere (subject, sender, or body) — the AI
+  // passes queries like "Priya launch" whose words never occur as one
+  // contiguous phrase, and an exact-phrase match finds nothing.
+  const words = opts.query?.trim().split(/\s+/).filter(Boolean) ?? [];
   const emails = await prisma.email.findMany({
     where: {
       mailbox: { userId },
       trashedAt: null,
       ...(opts.folder && isFolderId(opts.folder) ? folderWhere(opts.folder) : {}),
-      ...(opts.query
-        ? {
-            OR: [
-              { subject: { contains: opts.query, mode: "insensitive" as const } },
-              { from: { contains: opts.query, mode: "insensitive" as const } },
-              { text: { contains: opts.query, mode: "insensitive" as const } },
-            ],
-          }
-        : {}),
+      AND: words.map((word) => ({
+        OR: [
+          { subject: { contains: word, mode: "insensitive" as const } },
+          { from: { contains: word, mode: "insensitive" as const } },
+          { text: { contains: word, mode: "insensitive" as const } },
+        ],
+      })),
     },
     orderBy: { createdAt: "desc" },
     take: limit,

@@ -144,6 +144,8 @@ export async function runToolLoop(
 
   const citations = new Map<string, Citation>();
   const actions: ProposedAction[] = [];
+  const seenCalls = new Set<string>();
+  let forceAnswer = false;
 
   for (let i = 0; i < maxIterations; i++) {
     // On the last allowed round, force a text answer instead of letting the
@@ -155,7 +157,13 @@ export async function runToolLoop(
     // real citations along the way. tool_choice: "none" makes that
     // impossible: the model can't call anything, so it must synthesize
     // from whatever's already in the transcript.
-    const isFinalRound = i === maxIterations - 1;
+    const isFinalRound = forceAnswer || i === maxIterations - 1;
+    if (isFinalRound && i > 0) {
+      messages.push({
+        role: "system",
+        content: "No more lookups are available. Answer the user now in plain language using only what the results above show, and say honestly if something wasn't found.",
+      });
+    }
     const result = await opts.chatFn({
       messages,
       tools: opts.tools,
@@ -169,6 +177,15 @@ export async function runToolLoop(
       const message = isLeakedToolCall(result.content) ? COULDNT_FINISH_MESSAGE : result.content;
       return { message, citations: [...citations.values()], actions };
     }
+
+    // Re-running a call it already made can only return the same result —
+    // the model is stuck, so go straight to the answer round instead.
+    const signatures = result.toolCalls.map((tc) => `${tc.name}:${tc.rawArguments}`);
+    if (signatures.every((s) => seenCalls.has(s))) {
+      forceAnswer = true;
+      continue;
+    }
+    signatures.forEach((s) => seenCalls.add(s));
 
     messages.push({
       role: "assistant",

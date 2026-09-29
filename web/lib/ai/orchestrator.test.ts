@@ -157,6 +157,25 @@ describe("runToolLoop", () => {
     expect(chatFn).toHaveBeenCalledTimes(3);
   });
 
+  it("skips straight to the answer round once the model repeats a call it already made", async () => {
+    const chatFn: ChatFn = vi.fn().mockImplementation(async (opts) =>
+      opts.toolChoice === "none"
+        ? { content: "You have 3 unread emails." }
+        : { toolCalls: [{ id: "call", name: "search_emails", rawArguments: '{"folder":"inbox"}' }] }
+    );
+    const handlers: ToolHandlerMap = { search_emails: vi.fn().mockResolvedValue([]) };
+    const result = await runToolLoop("user-1", [turn("user", "what's unread?")], {
+      chatFn,
+      handlers,
+      tools: NO_TOOLS,
+      systemPrompt: "system",
+      maxIterations: 6,
+    });
+    expect(result.message).toBe("You have 3 unread emails.");
+    expect(handlers.search_emails).toHaveBeenCalledTimes(1);
+    expect(chatFn).toHaveBeenCalledTimes(3);
+  });
+
   it("de-dupes citations by email id across both search_emails and get_email calls", async () => {
     const chatFn: ChatFn = vi
       .fn()
