@@ -14,6 +14,7 @@ import {
   PencilSimpleLine,
   Plus,
   ShieldWarning,
+  Sparkle,
   SquaresFour,
   Star,
   Stack,
@@ -172,6 +173,18 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
             >
               <Handshake size={18} weight={pathname === "/promises" ? "fill" : "regular"} />
               Promises
+            </a>
+            <a
+              href="/ai"
+              onClick={onClose}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                pathname === "/ai"
+                  ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+                  : "text-text-secondary hover:bg-surface-subtle"
+              }`}
+            >
+              <Sparkle size={18} weight={pathname === "/ai" ? "fill" : "regular"} />
+              Ask AI
             </a>
           </nav>
         </div>
