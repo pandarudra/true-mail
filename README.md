@@ -19,8 +19,11 @@ TrueMail is a self-hosted-friendly email client that runs on **your own domain**
 - **Recurring tasks & reminders** (optional, needs `CRON_SECRET` and a Telegram connection) — Daily/Weekdays/Weekly/Monthly repeat rules with a reminder time, delivered as a Telegram message with Done/Skip/Snooze buttons that advance the series on its own. Works from the web dialogs or plain language ("study every day at 9pm")
 - **Calendar** — a real month view with today auto-highlighted, national and regional holidays for whichever country you pick (via [Calendarific](https://calendarific.com), cached server-side), and tasks shown and manageable right on their due date
 - **Dark mode**, a hand-drawn UI (via [Drawably](https://www.npmjs.com/package/drawably)), and a profile with a custom avatar
-- **Responsive** — the inbox, compose, settings, tasks, calendar, and landing page all adapt down to phone-sized screens
-- **AI assist** (optional, needs `NVIDIA_API_KEY`) — summarize an open email, draft a reply by intent (accept/decline/ask for details/thank/follow up/custom), ask your inbox a question and jump straight to the cited emails, extract an email's action items straight into one-click tasks, turn a plain-language sentence ("follow up with John tomorrow at 6pm") into a task with the right title and due date, or quietly check an open email in the background for a schedulable event (an interview, a meeting) and offer to add it to your calendar. Every call is user-triggered except that last background check; nothing else runs without a click
+- **Responsive** — the inbox, compose, settings, tasks, promises, calendar, and landing page all adapt down to phone-sized screens
+- **Promises** — track commitments in both directions: things you promised someone, and things someone promised you. Each has a person, an optional deadline, and a derived status (active, due soon, overdue, fulfilled, dismissed). Log one by hand, or let AI spot a commitment in an open email and offer to track it; when a later email looks like it delivers on an incoming promise, TrueMail offers to mark it fulfilled. Any promise can be turned into a linked task
+- **Overview** — a home dashboard with a greeting, unread and task counts, a tasks/promises/today snapshot, and a GitHub-style activity graph with your longest streak
+- **Ask AI (Tomy)** (optional, needs `NVIDIA_API_KEY`) — a chat workspace at `/ai` that answers questions about your own data by calling real tools, not by guessing: it searches and reads emails, searches/creates/completes tasks, searches/creates promises, and checks your calendar. Answers cite the source emails so you can jump straight to them, and suggested tasks/promises come back as one-click buttons instead of being created silently. Conversation lives in the page for the current visit only
+- **AI assist** (optional, needs `NVIDIA_API_KEY`) — summarize an open email, draft a reply by intent (accept/decline/ask for details/thank/follow up/custom), ask your inbox a question and jump straight to the cited emails, extract an email's action items straight into one-click tasks, or turn a plain-language sentence ("follow up with John tomorrow at 6pm") into a task with the right title and due date. When you open an email, three quiet background checks look for a schedulable event (an interview, a meeting), a promise worth tracking, or the fulfillment of a promise you're already tracking — each only *offers* a card, nothing is saved without a click. Everything else is user-triggered
 - **Telegram assistant** (optional, needs a bot token) — connect a Telegram account from Settings and get your daily summary, task list, email summary, and calendar from a bot, on demand — plain-language requests ("give me my day", "create a task to call Rahul tomorrow") work alongside `/today`, `/tasks`, `/create`, etc. Every request resolves to your account through a secure link, never anything the message itself claims
 
 ## Tech stack
@@ -130,7 +133,7 @@ Run these from `web/`:
 ```
 web/
 ├─ app/            # Next.js App Router — pages and API routes
-│  ├─ (app)/       # Authenticated app: inbox, compose, tasks, calendar, settings, onboarding
+│  ├─ (app)/       # Authenticated app: overview, inbox, compose, tasks, promises, calendar, Ask AI, settings, onboarding
 │  └─ api/         # Route handlers
 ├─ components/      # React components (UI primitives under components/ui/)
 ├─ lib/             # Server/client helpers — auth, Resend wrappers, crypto, etc.
