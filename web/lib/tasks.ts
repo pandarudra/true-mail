@@ -21,6 +21,14 @@ export async function ownsTask(id: string, userId: string): Promise<boolean> {
   return count > 0;
 }
 
+export async function getTasksForUser(userId: string) {
+  return prisma.task.findMany({
+    where: { userId },
+    orderBy: [{ listId: "asc" }, { position: "asc" }],
+    include: TASK_INCLUDE,
+  });
+}
+
 export async function getOrCreateDefaultTaskList(userId: string) {
   const existing = await prisma.taskList.findFirst({ where: { userId, isDefault: true } });
   if (existing) return existing;
@@ -197,5 +205,21 @@ export async function completeRecurringOccurrence(taskId: string, userId: string
     include: TASK_INCLUDE,
   });
 
+  return { ok: true, task };
+}
+
+// The single entry point for "mark this task done" — used by the PATCH
+// route and the Ask AI complete_task tool. A recurring task never actually
+// flips to completed: true (see completeRecurringOccurrence above); every
+// other task gets a plain completed/completedAt update.
+export async function completeTaskForUser(id: string, userId: string): Promise<CreateTaskResult> {
+  const existing = await prisma.task.findFirst({ where: { id, userId } });
+  if (!existing) return { ok: false, error: "not found", status: 404 };
+  if (existing.recurrenceType) return completeRecurringOccurrence(id, userId);
+  const task = await prisma.task.update({
+    where: { id },
+    data: { completed: true, completedAt: new Date() },
+    include: TASK_INCLUDE,
+  });
   return { ok: true, task };
 }

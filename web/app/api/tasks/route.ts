@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/session";
-import { createTaskForUser, TASK_INCLUDE } from "@/lib/tasks";
+import { createTaskForUser, getTasksForUser } from "@/lib/tasks";
 
 export async function GET(req: Request) {
   const userId = await getUserId(req.headers);
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const tasks = await prisma.task.findMany({
-    where: { userId },
-    orderBy: [{ listId: "asc" }, { position: "asc" }],
-    include: TASK_INCLUDE,
-  });
+  const tasks = await getTasksForUser(userId);
   return NextResponse.json({ tasks });
 }
 

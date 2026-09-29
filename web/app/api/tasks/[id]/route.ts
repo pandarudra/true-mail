@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/session";
-import { loadOwnedTask, completeRecurringOccurrence, resolveRecurrence, TASK_INCLUDE } from "@/lib/tasks";
+import { loadOwnedTask, completeTaskForUser, resolveRecurrence, TASK_INCLUDE } from "@/lib/tasks";
 import type { Prisma } from "@/generated/prisma/client";
 
 const PRIORITIES = new Set(["LOW", "NORMAL", "HIGH", "URGENT"]);
@@ -22,13 +22,14 @@ export async function PATCH(
 
   const body = await req.json();
 
-  // A recurring task never just "completes" — checking it off (or swiping
-  // it, same code path) advances the whole series to its next occurrence
-  // instead. Handled separately and returned immediately: mixing this with
-  // other field edits in the same request isn't a real use case today (the
-  // web checkbox and TaskCard's swipe both send `{ completed: true }` alone).
-  if (body?.completed === true && existing.recurrenceType) {
-    const result = await completeRecurringOccurrence(id, userId);
+  // "Mark done" is handled separately and returned immediately, whether or
+  // not the task recurs — mixing this with other field edits in the same
+  // request isn't a real use case today (the web checkbox and TaskCard's
+  // swipe both send `{ completed: true }` alone). completeTaskForUser
+  // internally routes a recurring task to advance-the-series instead of a
+  // plain completed flip.
+  if (body?.completed === true) {
+    const result = await completeTaskForUser(id, userId);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
@@ -41,9 +42,9 @@ export async function PATCH(
   if ("dueAt" in body) data.dueAt = body.dueAt ? new Date(body.dueAt) : null;
   if (typeof body?.dueHasTime === "boolean") data.dueHasTime = body.dueHasTime;
   if (PRIORITIES.has(body?.priority)) data.priority = body.priority;
-  if (typeof body?.completed === "boolean") {
-    data.completed = body.completed;
-    data.completedAt = body.completed ? new Date() : null;
+  if (body?.completed === false) {
+    data.completed = false;
+    data.completedAt = null;
   }
 
   // "recurrence": null turns an existing recurring task back into a plain
