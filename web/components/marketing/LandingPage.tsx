@@ -20,6 +20,7 @@ import { DrawablyBadge, DrawablyDivider } from "drawably/react";
 import { BrandMark } from "@/components/BrandMark";
 import { DrawablyLinkButton } from "@/components/ui/DrawablyLinkButton";
 import { InboxPreview } from "@/components/marketing/InboxPreview";
+import Image from "next/image";
 
 const FEATURES = [
   {
@@ -121,11 +122,16 @@ export function LandingPage() {
               Run email on infrastructure you control.
             </h1>
             <p className="mt-5 max-w-md text-base leading-relaxed text-white/70">
-              TrueMail connects to your own Resend account and your own domain, then gives you a
-              fast, modern inbox on top. No shared infrastructure, no one else holding your mail.
+              TrueMail connects to your own Resend account and your own domain,
+              then gives you a fast, modern inbox on top. No shared
+              infrastructure, no one else holding your mail.
             </p>
             <div className="mt-8 flex items-center gap-6">
-              <DrawablyLinkButton href="/signup" variant="solid" className="text-base">
+              <DrawablyLinkButton
+                href="/signup"
+                variant="solid"
+                className="text-base"
+              >
                 Get started
               </DrawablyLinkButton>
               <a
@@ -135,6 +141,19 @@ export function LandingPage() {
                 See how it works
               </a>
             </div>
+            <a
+              href="https://www.producthunt.com/products/truemail?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-truemail"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-block opacity-90 transition-opacity hover:opacity-100"
+            >
+              <Image
+                alt="TrueMail - Own Your Inbox | Product Hunt"
+                width={250}
+                height={54}
+                src={`https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1264764&theme=dark&t=1790701673342`}
+              />
+            </a>
           </div>
           <div className="flex justify-center lg:justify-end">
             <InboxPreview />
@@ -143,7 +162,9 @@ export function LandingPage() {
       </header>
 
       <section className="mx-auto max-w-6xl px-6 py-20">
-        <h2 className="max-w-lg text-2xl font-semibold text-foreground">What&rsquo;s included</h2>
+        <h2 className="max-w-lg text-2xl font-semibold text-foreground">
+          What&rsquo;s included
+        </h2>
         <div className="mt-10 grid gap-x-10 gap-y-10 sm:grid-cols-2">
           {FEATURES.map(({ icon: Icon, title, body }) => (
             <div key={title} className="flex gap-4">
@@ -151,26 +172,44 @@ export function LandingPage() {
                 <Icon size={20} weight="bold" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-text-secondary">{body}</p>
+                <h3 className="text-sm font-semibold text-foreground">
+                  {title}
+                </h3>
+                <p className="mt-1 text-sm leading-relaxed text-text-secondary">
+                  {body}
+                </p>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      <DrawablyDivider roughness={0.3} boil={0.1} className="mx-auto max-w-6xl" />
+      <DrawablyDivider
+        roughness={0.3}
+        boil={0.1}
+        className="mx-auto max-w-6xl"
+      />
 
       <section id="how-it-works" className="mx-auto max-w-6xl px-6 py-20">
-        <h2 className="max-w-lg text-2xl font-semibold text-foreground">How it works</h2>
+        <h2 className="max-w-lg text-2xl font-semibold text-foreground">
+          How it works
+        </h2>
         <div className="mt-10 grid gap-10 sm:grid-cols-3">
           {STEPS.map((step, i) => (
             <div key={step.title}>
-              <DrawablyBadge roughness={0.4} boil={0.15} className="text-sm font-semibold">
+              <DrawablyBadge
+                roughness={0.4}
+                boil={0.15}
+                className="text-sm font-semibold"
+              >
                 {i + 1}
               </DrawablyBadge>
-              <h3 className="mt-4 text-sm font-semibold text-foreground">{step.title}</h3>
-              <p className="mt-1 text-sm leading-relaxed text-text-secondary">{step.body}</p>
+              <h3 className="mt-4 text-sm font-semibold text-foreground">
+                {step.title}
+              </h3>
+              <p className="mt-1 text-sm leading-relaxed text-text-secondary">
+                {step.body}
+              </p>
             </div>
           ))}
         </div>
@@ -184,13 +223,22 @@ export function LandingPage() {
           </h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-2">
             <div className="flex gap-3">
-              <LockKey size={20} weight="bold" className="mt-0.5 shrink-0 text-brand-300" />
+              <LockKey
+                size={20}
+                weight="bold"
+                className="mt-0.5 shrink-0 text-brand-300"
+              />
               <p className="text-sm leading-relaxed text-white/70">
-                Credentials are encrypted at rest and only ever used from TrueMail&rsquo;s backend.
+                Credentials are encrypted at rest and only ever used from
+                TrueMail&rsquo;s backend.
               </p>
             </div>
             <div className="flex gap-3">
-              <ShieldCheck size={20} weight="bold" className="mt-0.5 shrink-0 text-brand-300" />
+              <ShieldCheck
+                size={20}
+                weight="bold"
+                className="mt-0.5 shrink-0 text-brand-300"
+              />
               <p className="text-sm leading-relaxed text-white/70">
                 Every inbound webhook is signature-verified before we touch it.
               </p>
