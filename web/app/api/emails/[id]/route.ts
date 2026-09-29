@@ -2,12 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/session";
 import { attachmentsCreateData } from "@/lib/attachments";
-
-async function loadOwnedEmail(id: string, userId: string) {
-  return prisma.email.findFirst({
-    where: { id, mailbox: { userId } },
-  });
-}
+import { loadOwnedEmail } from "@/lib/emails";
 
 export async function GET(
   req: Request,
