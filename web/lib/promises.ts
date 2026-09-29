@@ -41,6 +41,39 @@ export async function getPromisesForUser(userId: string, now: Date = new Date())
   return rows.map((r) => withDerivedStatus(r, now));
 }
 
+// `status` accepts "all" | "active" | "fulfilled" | "dismissed" — "active"
+// maps to every derived status that isn't a terminal one (ACTIVE, DUE_SOON,
+// OVERDUE all still need action), matching how PromiseList's "all" filter
+// already treats them as one group.
+export async function searchPromisesForUser(
+  userId: string,
+  opts: { query?: string; status?: string } = {}
+): Promise<PromiseWithDerivedStatus[]> {
+  const all = await getPromisesForUser(userId);
+  let filtered = all;
+
+  if (opts.query) {
+    const q = opts.query.toLowerCase();
+    filtered = filtered.filter(
+      (p) =>
+        p.commitment.toLowerCase().includes(q) ||
+        (p.personName?.toLowerCase().includes(q) ?? false) ||
+        (p.personEmail?.toLowerCase().includes(q) ?? false)
+    );
+  }
+
+  if (opts.status && opts.status !== "all") {
+    const wantActive = opts.status === "active";
+    filtered = filtered.filter((p) =>
+      wantActive
+        ? p.derivedStatus === "ACTIVE" || p.derivedStatus === "DUE_SOON" || p.derivedStatus === "OVERDUE"
+        : p.derivedStatus === opts.status!.toUpperCase()
+    );
+  }
+
+  return filtered;
+}
+
 export async function loadOwnedPromise(
   id: string,
   userId: string,
