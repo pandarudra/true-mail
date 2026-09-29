@@ -1,4 +1,4 @@
-import { chatWithTools, type ChatFn, type ChatMessage, type ToolDef } from "./nvidia";
+import { chatText, chatWithTools, type ChatFn, type ChatMessage, type ToolDef } from "./nvidia";
 import { searchEmailsForUser, loadOwnedEmail } from "@/lib/emails";
 import { emailBodyText } from "@/lib/email-text";
 import { getTasksForUser, createTaskForUser, completeTaskForUser } from "@/lib/tasks";
@@ -22,6 +22,35 @@ export function toUtcIso(value: unknown, timezoneOffsetMinutes: number): string 
   } catch {
     return null;
   }
+}
+
+// A small 11B instruct model under tool_choice:"auto" with ten tools on
+// offer reliably ignores a "don't call a tool for a bare greeting" prompt
+// instruction — verified live, it still burns the whole iteration budget
+// searching for something to do with "hi". Prompt wording alone isn't
+// reliable enough here, so greetings/small talk are routed around the
+// tool loop entirely by a deterministic match instead. Deliberately a
+// narrow whitelist of near-exact phrases, not a "message is short" check —
+// a short real question ("tasks?") must still reach the tools.
+const CHITCHAT_PATTERNS: RegExp[] = [
+  /^h(i+|ey+|ello+)( there)?$/,
+  /^(good )?(morning|afternoon|evening|night)$/,
+  /^how('s| is| are) (it going|things|you( doing)?)$/,
+  /^what'?s up$/,
+  /^sup$/,
+  /^yo$/,
+  /^(thanks|thank you|thx|ty)$/,
+  /^(ok|okay|cool|nice|great|awesome|got it|sounds good)$/,
+  /^(lol|haha)$/,
+  /^(bye|goodbye|see ya|see you|later)$/,
+];
+
+export function isChitChat(message: string): boolean {
+  const normalized = message
+    .trim()
+    .toLowerCase()
+    .replace(/[.!?]+$/, "");
+  return CHITCHAT_PATTERNS.some((re) => re.test(normalized));
 }
 
 export type { ChatResult, ChatTurn, Citation, ProposedAction } from "./orchestrator-shared";
@@ -134,7 +163,8 @@ export async function runToolLoop(
   }
 
   return {
-    message: "I wasn't able to finish that within a reasonable number of steps — try rephrasing or asking a smaller question.",
+    message:
+      "Hmm, that one got away from me — I went down a rabbit hole and didn't land on an answer. Mind asking it again, maybe a bit more specific? I'll get it this time!",
     citations: [...citations.values()],
     actions,
   };
@@ -143,13 +173,18 @@ export async function runToolLoop(
 function buildSystemPrompt(localNow: Date): string {
   const today = localNow.toISOString().slice(0, 10);
   const weekday = localNow.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
-  return `You are Ask AI, TrueMail's assistant. You have tools to search and read the user's emails, and to search, create, and complete their tasks and promises, and to look up their calendar (scheduled tasks — TrueMail has no separate events model, a task with a due date is a calendar entry).
+  return `You are Tomy, TrueMail's AI assistant — warm, friendly, and a little playful, like a sharp colleague who happens to have read the user's whole inbox.
+
+MOST IMPORTANT RULE, CHECK THIS FIRST: if the user's message is just a greeting, thanks, small talk, or anything else that isn't actually a question about their email/tasks/promises/schedule ("hi", "hello", "hey", "how are you", "thanks!", "good morning", "lol", "ok", "cool") — do NOT call any tool. Just reply in one short, warm, natural sentence, the way a friendly colleague passing in the hallway would, and stop there. Calling a tool for a plain greeting is a mistake — there is nothing to look up.
+
+Only once the user asks something that actually needs their TrueMail data do the tools below come in. You have tools to search and read the user's emails, and to search, create, and complete their tasks and promises, and to look up their calendar (scheduled tasks — TrueMail has no separate events model, a task with a due date is a calendar entry).
 
 Today's date is ${today}, a ${weekday}. Resolve relative dates ("tomorrow", "next Friday", "this week") against that. Whenever a tool takes a date (dueAt, fromDate, toDate), give it as a LOCAL date or datetime — "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm:ss" — never UTC, never with a timezone suffix.
 
 Rules:
-- Always call a tool to look up current data before answering a question about the user's emails, tasks, promises, or schedule. Never guess or invent information.
-- Answer naturally, in plain language. Never mention tool or function names, or say that you are calling a tool.
+- For a real question about the user's data, call a tool to look it up before answering. Never guess or invent information.
+- Write like you're talking to a person, not filing a report: contractions are fine, a little personality is good, but stay clear and get to the point — no corporate throat-clearing.
+- Never mention tool or function names, or say that you're "calling a tool" — just do it and talk about what you found.
 - Only call create_task or create_promise when the user has explicitly asked you to create, add, or track something. When you are just listing or summarizing things you found, call propose_task or propose_promise instead for each one you'd suggest (or make no such call if there's nothing worth suggesting) — never call both a create and a propose tool for the same thing in one turn.
 - When you use information from a specific email to answer, make sure you reached it via search_emails or get_email so its source can be shown to the user.
 - Keep answers concise — a few sentences, not an essay.`;
@@ -376,6 +411,20 @@ function buildToolHandlers(timezoneOffsetMinutes: number): ToolHandlerMap {
 }
 
 export async function runAssistant(userId: string, turns: ChatTurn[], timezoneOffsetMinutes = 0): Promise<ChatResult> {
+  // Routed around the tool loop entirely (see isChitChat's comment) rather
+  // than relying on the model to decline every tool for a bare "hi".
+  const lastTurn = turns.at(-1);
+  if (lastTurn?.role === "user" && isChitChat(lastTurn.content)) {
+    const reply = await chatText({
+      system:
+        "You are Tomy, TrueMail's AI assistant — warm, friendly, and a little playful. The user just said something conversational (a greeting, thanks, or small talk), not a question about their email, tasks, promises, or schedule. Reply in one short, natural sentence, the way a friendly colleague passing in the hallway would.",
+      user: lastTurn.content,
+      maxTokens: 60,
+      temperature: 0.7,
+    });
+    return { message: reply, citations: [], actions: [] };
+  }
+
   const localNow = new Date(Date.now() - timezoneOffsetMinutes * 60000);
   return runToolLoop(userId, turns, {
     chatFn: chatWithTools,

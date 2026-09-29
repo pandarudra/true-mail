@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { runToolLoop, toUtcIso, type ToolHandlerMap } from "./orchestrator";
+import { isChitChat, runToolLoop, toUtcIso, type ToolHandlerMap } from "./orchestrator";
 import type { ChatTurn } from "./orchestrator-shared";
 import type { ChatFn, ToolDef } from "./nvidia";
 
@@ -107,7 +107,7 @@ describe("runToolLoop", () => {
       maxIterations: 3,
     });
     expect(chatFn).toHaveBeenCalledTimes(3);
-    expect(result.message).toMatch(/wasn't able to finish/);
+    expect(result.message).toMatch(/rabbit hole/);
   });
 
   it("de-dupes citations by email id across both search_emails and get_email calls", async () => {
@@ -205,5 +205,27 @@ describe("toUtcIso", () => {
     expect(toUtcIso("", 0)).toBeNull();
     expect(toUtcIso(undefined, 0)).toBeNull();
     expect(toUtcIso(null, 0)).toBeNull();
+  });
+});
+
+describe("isChitChat", () => {
+  it("recognizes common greetings and small talk", () => {
+    expect(isChitChat("hi")).toBe(true);
+    expect(isChitChat("Hi!")).toBe(true);
+    expect(isChitChat("hello")).toBe(true);
+    expect(isChitChat("hey there")).toBe(true);
+    expect(isChitChat("good morning")).toBe(true);
+    expect(isChitChat("how are you?")).toBe(true);
+    expect(isChitChat("thanks!")).toBe(true);
+    expect(isChitChat("thank you")).toBe(true);
+    expect(isChitChat("ok")).toBe(true);
+    expect(isChitChat("cool")).toBe(true);
+  });
+
+  it("does not misclassify real questions about the user's data, even short ones", () => {
+    expect(isChitChat("tasks?")).toBe(false);
+    expect(isChitChat("what emails do I have")).toBe(false);
+    expect(isChitChat("any promises due today")).toBe(false);
+    expect(isChitChat("create a task to do laundry")).toBe(false);
   });
 });

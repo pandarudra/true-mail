@@ -58,7 +58,7 @@ export function AskAiClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
         { role: "assistant", content: result.message, citations: result.citations ?? [], actions: result.actions ?? [] },
       ]);
     } catch {
-      setTurns((prev) => [...prev, { role: "error", content: "Couldn't reach the server. Check your connection and try again." }]);
+      setTurns((prev) => [...prev, { role: "error", content: "Lost the connection there for a second — mind trying that again?" }]);
     } finally {
       setLoading(false);
     }
@@ -85,16 +85,23 @@ export function AskAiClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
                 {turns.map((turn, i) => (
                   <AiMessageBubble key={i} turn={turn} />
                 ))}
-                {loading && <p className="text-sm text-text-secondary">Thinking…</p>}
+                {loading && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm text-text-secondary">Tomy&apos;s thinking</span>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- animated
+                        gif; next/image would drop the animation on optimization */}
+                    <img src="/gif/tomy_thinking_crop.gif" alt="" width={44} height={18} className="h-4 w-auto" />
+                  </div>
+                )}
               </div>
             </div>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6 text-center">
               <Sparkle size={28} className="text-brand-500" />
               <div>
-                <h1 className="text-xl font-semibold text-foreground">Ask AI</h1>
+                <h1 className="text-xl font-semibold text-foreground">Hi, I&apos;m Tomy</h1>
                 <p className="mt-1 text-sm text-text-secondary">
-                  Your email, understood. Ask about your emails, tasks, promises, and calendar.
+                  Your TrueMail AI. Ask me about your emails, tasks, promises, and calendar.
                 </p>
               </div>
               <AiQuickStart onPick={setInput} />
