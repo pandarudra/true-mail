@@ -1934,6 +1934,78 @@
           "502": { "description": "AI is temporarily unavailable", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
+    },
+    "/api/ai/chat": {
+      "post": {
+        "tags": ["AI"],
+        "summary": "Ask AI — a tool-calling assistant over the user's emails, tasks, promises, and calendar",
+        "description": "Stateless: the client sends the full in-memory conversation each turn. The assistant calls tools (search/read emails, search/create/complete tasks and promises, calendar range queries) as needed; citations are always the emails actually returned by those tool calls, never trusted from the model's own text. actions are AI-suggested, not-yet-executed creates for the client to render as confirm buttons — separate from any create the assistant already performed via a tool call in this same turn.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["messages"],
+                "properties": {
+                  "messages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["role", "content"],
+                      "properties": {
+                        "role": { "type": "string", "enum": ["user", "assistant"] },
+                        "content": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "citations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "emailId": { "type": "string", "format": "uuid" },
+                          "from": { "type": "string" },
+                          "subject": { "type": "string" },
+                          "snippet": { "type": "string" }
+                        }
+                      }
+                    },
+                    "actions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": { "type": "string", "enum": ["create_task", "create_promise"] },
+                          "label": { "type": "string" },
+                          "params": { "type": "object" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "messages is required", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "502": { "description": "AI is temporarily unavailable", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
     }
   }
 }
