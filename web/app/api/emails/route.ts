@@ -125,7 +125,7 @@ export async function POST(req: Request) {
   if (!mailbox) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
-  if (mailbox.domain.status !== "verified") {
+  if (mailbox.domain?.status !== "verified") {
     return NextResponse.json(
       { error: "domain is not verified" },
       { status: 400 }

@@ -29,6 +29,7 @@ model User {
   timezone String?
 
   resendConnection   ResendConnection?
+  gmailConnection    GmailConnection?
   domains            Domain[]
   mailboxes          Mailbox[]
   sessions           Session[]
@@ -75,21 +76,24 @@ model Mailbox {
   id          String   @id @default(uuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  domainId    String
-  domain      Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domainId    String?
+  domain      Domain?  @relation(fields: [domainId], references: [id], onDelete: Cascade)
   localPart   String
   address     String   @unique
   displayName String?
   isDefault   Boolean  @default(false)
+  source      String   @default("resend")
   createdAt   DateTime @default(now())
   emails      Email[]
+  gmailConnection GmailConnection?
 }
 
 model Email {
-  id            String       @id @default(uuid())
-  mailboxId     String
-  mailbox       Mailbox      @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
-  resendEmailId String?
+  id             String       @id @default(uuid())
+  mailboxId      String
+  mailbox        Mailbox      @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  resendEmailId  String?
+  gmailMessageId String?      @unique
   direction     String
   from          String
   to            String[]
@@ -246,6 +250,21 @@ model Subtask {
   title     String
   completed Boolean @default(false)
   position  Int     @default(0)
+}
+
+model GmailConnection {
+  id                    String    @id @default(uuid())
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mailboxId             String    @unique
+  mailbox               Mailbox   @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  gmailEmail            String
+  encryptedAccessToken  String
+  encryptedRefreshToken String
+  accessTokenExpiresAt  DateTime
+  lastSyncedAt          DateTime?
+  historyId             String?
+  createdAt             DateTime  @default(now())
 }
 
 model TelegramConnection {
