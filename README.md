@@ -2,157 +2,250 @@
 
 # TrueMail
 
-Email infrastructure you actually own.
+**Email infrastructure you actually own — now with an AI agent powered by MCP.**
 
-TrueMail is a self-hosted-friendly email client that runs on **your own domain** and **your own [Resend](https://resend.com) account**. Instead of another walled-garden inbox, it's a fast, modern inbox on top of infrastructure you control — your credentials are encrypted and never leave the backend, and every inbound webhook is signature-verified before it's touched.
+TrueMail is a self-hosted-friendly email client built on your own domain and your own [Resend](https://resend.com) account. It ships a full **Model Context Protocol (MCP) server** that exposes your inbox, tasks, promises, and calendar as tools — so an AI agent can search emails, summarise threads, create tasks, and send replies, all from a chat interface inside the app.
+
+> Built for the [Amazon App Developer Hackathon 2026](https://amazonappdev2026.devpost.com) — Alexa+ / MCP track.
+
+---
+
+## What's new for the hackathon
+
+| Feature | Detail |
+|---|---|
+| **Self-hosted MCP server** | Standalone Express server at `mcp/` with [Streamable HTTP transport](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http) — stateless, one transport per POST, spec-compliant |
+| **12 MCP tools** | `search_emails`, `get_email`, `summarize_email`, `extract_actions`, `send_email` *, `reply_email` *, `search_tasks`, `create_task`, `complete_task`, `search_promises`, `create_promise`, `search_calendar` |
+| **Tomy Agent** | Chat UI at `/ai` backed by `/api/agent` — full agentic tool loop via MCP, powered by **NVIDIA NIM / Llama 3.2 11B** |
+| **Gmail connector** | OAuth2 connect flow → syncs Gmail inbox into TrueMail as a separate mailbox; searchable by Tomy |
+| **Confirmation before send** | `send_email` / `reply_email` return a preview and require `confirmed: true` — the agent asks before anything is sent |
+
+\* Requires explicit confirmation in the chat before the email is sent.
+
+---
 
 ## Features
 
-- **Custom domain** — add a domain, verify SPF/DKIM/DMARC, send from an address that's actually yours
-- **BYO Resend** — connect your own Resend account via OAuth; credentials are encrypted at rest and only ever used server-side
-- **Multiple mailboxes** — run as many addresses as you need on one domain, with a primary you can switch anytime
-- **A real inbox** — starred, important, archive, spam, trash, all mail, labels with colors, search
-- **Drafts that autosave** — debounced autosave while composing, resume any draft later
-- **Reply, reply-all, and forward** — direction-aware recipients and quoted replies
-- **Attachments** — uploaded via Cloudinary for outgoing mail; incoming attachments are fetched from Resend on demand (no duplicate storage)
-- **Tasks** — a task manager built into the inbox: due dates (quick presets or a custom date picker), priorities, lists, subtasks, and Today/Upcoming/Overdue/Completed views. Add a task straight from an email via the reading pane, and it stays linked back to the email it came from
-- **Recurring tasks & reminders** (optional, needs `CRON_SECRET` and a Telegram connection) — Daily/Weekdays/Weekly/Monthly repeat rules with a reminder time, delivered as a Telegram message with Done/Skip/Snooze buttons that advance the series on its own. Works from the web dialogs or plain language ("study every day at 9pm")
-- **Calendar** — a real month view with today auto-highlighted, national and regional holidays for whichever country you pick (via [Calendarific](https://calendarific.com), cached server-side), and tasks shown and manageable right on their due date
-- **Dark mode**, a hand-drawn UI (via [Drawably](https://www.npmjs.com/package/drawably)), and a profile with a custom avatar
-- **Responsive** — the inbox, compose, settings, tasks, promises, calendar, and landing page all adapt down to phone-sized screens
-- **Promises** — track commitments in both directions: things you promised someone, and things someone promised you. Each has a person, an optional deadline, and a derived status (active, due soon, overdue, fulfilled, dismissed). Log one by hand, or let AI spot a commitment in an open email and offer to track it; when a later email looks like it delivers on an incoming promise, TrueMail offers to mark it fulfilled. Any promise can be turned into a linked task
-- **Overview** — a home dashboard with a greeting, unread and task counts, a tasks/promises/today snapshot, and a GitHub-style activity graph with your longest streak
-- **Ask AI (Tomy)** (optional, needs `NVIDIA_API_KEY`) — a chat workspace at `/ai` that answers questions about your own data by calling real tools, not by guessing: it searches and reads emails, searches/creates/completes tasks, searches/creates promises, and checks your calendar. Answers cite the source emails so you can jump straight to them, and suggested tasks/promises come back as one-click buttons instead of being created silently. Conversation lives in the page for the current visit only
-- **AI assist** (optional, needs `NVIDIA_API_KEY`) — summarize an open email, draft a reply by intent (accept/decline/ask for details/thank/follow up/custom), ask your inbox a question and jump straight to the cited emails, extract an email's action items straight into one-click tasks, or turn a plain-language sentence ("follow up with John tomorrow at 6pm") into a task with the right title and due date. When you open an email, three quiet background checks look for a schedulable event (an interview, a meeting), a promise worth tracking, or the fulfillment of a promise you're already tracking — each only *offers* a card, nothing is saved without a click. Everything else is user-triggered
-- **Telegram assistant** (optional, needs a bot token) — connect a Telegram account from Settings and get your daily summary, task list, email summary, and calendar from a bot, on demand — plain-language requests ("give me my day", "create a task to call Rahul tomorrow") work alongside `/today`, `/tasks`, `/create`, etc. Every request resolves to your account through a secure link, never anything the message itself claims
+- **Custom domain** — add a domain, verify SPF/DKIM/DMARC, send from an address that's yours
+- **BYO Resend** — connect your Resend account via OAuth; credentials are encrypted at rest
+- **Multiple mailboxes** — as many addresses as you need on one domain
+- **Gmail connector** — connect your Google account to read Gmail emails inside TrueMail
+- **Full inbox** — starred, important, archive, spam, trash, labels, search
+- **Compose, reply, reply-all, forward** — with attachments via Cloudinary
+- **Tasks** — due dates, priorities, lists, subtasks, recurring tasks with reminders
+- **Calendar** — month view, national/regional holidays, tasks on their due date
+- **Promises** — track commitments in both directions (you promised / someone promised you)
+- **Overview dashboard** — unread counts, task snapshot, GitHub-style activity graph
+- **Tomy AI** — chat agent that searches emails, creates tasks, tracks promises, reads your calendar, and can send email with your approval
+- **Telegram assistant** — daily digests, task creation, and email summaries via Telegram bot
+- **Dark mode**, hand-drawn UI ([Drawably](https://www.npmjs.com/package/drawably)), responsive down to phone width
+
+---
+
+## Architecture
+
+```
+Browser
+  │
+  ├── Next.js 16 app (web/)          ← main app, auth, DB, all UI
+  │     ├── /api/agent               ← agentic chat endpoint
+  │     ├── /api/emails/search       ← cross-mailbox search (used by MCP)
+  │     └── ... all other API routes
+  │
+  └── MCP Server (mcp/)              ← separate Express process
+        ├── POST /mcp                ← Streamable HTTP transport (stateless)
+        └── 12 tools → call web/api/* with internal shared-secret auth
+```
+
+**Auth bridging:** The MCP server calls TrueMail's own API routes using two shared secrets:
+
+- `INTERNAL_API_KEY` — MCP server → TrueMail (`x-internal-key` header)  
+- `MCP_SHARED_SECRET` — Tomy agent → MCP server (`x-internal-secret` header)
+
+Neither secret is ever exposed to the browser.
+
+---
 
 ## Tech stack
 
-- [Next.js 16](https://nextjs.org) (App Router, Turbopack) + React 19 + TypeScript
-- [Prisma 7](https://www.prisma.io) on PostgreSQL (developed against [Supabase](https://supabase.com))
-- [better-auth](https://www.better-auth.com) — email/password + Google OAuth
-- [Resend](https://resend.com) — sending, receiving (webhooks), and attachment storage for inbound mail
-- [Cloudinary](https://cloudinary.com) (via `next-cloudinary`) — attachment storage for outgoing mail
-- [Calendarific](https://calendarific.com) — holiday data for the calendar, cached in Postgres
-- Tailwind CSS v4, [Drawably](https://www.npmjs.com/package/drawably) for the hand-drawn UI chrome
-- [Vitest](https://vitest.dev) for unit tests
+| Layer | Technology |
+|---|---|
+| Framework | [Next.js 16](https://nextjs.org) (App Router, Turbopack) + React 19 + TypeScript |
+| Database | [Prisma 7](https://www.prisma.io) on PostgreSQL ([Supabase](https://supabase.com)) |
+| Auth | [better-auth](https://www.better-auth.com) — email/password + Google OAuth |
+| Email infra | [Resend](https://resend.com) — send, receive (webhooks), inbound attachments |
+| Attachments | [Cloudinary](https://cloudinary.com) — outgoing mail attachments |
+| AI model | [NVIDIA NIM](https://build.nvidia.com) — Llama 3.2 11B Vision Instruct |
+| MCP transport | [`@modelcontextprotocol/sdk`](https://www.npmjs.com/package/@modelcontextprotocol/sdk) — Streamable HTTP |
+| Styling | Tailwind CSS v4 + [Drawably](https://www.npmjs.com/package/drawably) |
+| Holidays | [Calendarific](https://calendarific.com) — cached in Postgres |
+| Tests | [Vitest](https://vitest.dev) |
 
-> **Note for contributors:** this project pins a very recent Next.js version with breaking changes from what most training data covers. Read [`web/AGENTS.md`](web/AGENTS.md) before making changes to routing, data fetching, or config.
+---
 
 ## Getting started
 
 ### Prerequisites
 
 - Node.js 20+
-- A PostgreSQL database (Supabase's free tier works well — you'll need both the pooled and direct connection strings)
+- PostgreSQL (Supabase free tier works — you'll need both pooled and direct URLs)
 - A [Resend](https://resend.com) account
-- A [Cloudinary](https://cloudinary.com) account (only needed for attachments)
-- A Google OAuth client (only needed for "Sign in with Google")
+- A [Cloudinary](https://cloudinary.com) account (for outgoing attachments)
+- A Google OAuth client (for sign-in with Google + Gmail connector)
+- An [NVIDIA NIM](https://build.nvidia.com) API key (free tier, for AI features)
 
-### Setup
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/pandarudra/true-mail.git
-cd true-mail/web
-npm install
+cd true-mail
+
+# Web app
+cd web && npm install
+
+# MCP server
+cd ../mcp && npm install
+```
+
+### 2. Configure environment
+
+```bash
+cd web
+cp .env.example .env   # then fill in the values below
+```
+
+**Required:**
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | Postgres pooled connection string |
+| `DIRECT_URL` | Postgres direct connection string |
+| `ENCRYPTION_KEY` | 32 random bytes, base64: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
+| `BETTER_AUTH_SECRET` | Same as above |
+| `APP_URL` | `http://localhost:3000` |
+| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` |
+| `RESEND_WEBHOOK_BASE_URL` | Public HTTPS tunnel for webhooks (e.g. `ngrok http 3000`) |
+| `RESEND_OAUTH_CLIENT_ID` | From `node scripts/register-resend-oauth-client.mjs http://localhost:3000` |
+| `RESEND_OAUTH_CLIENT_SECRET` | Same script |
+
+**AI + MCP (needed for Tomy Agent):**
+
+| Variable | Value |
+|---|---|
+| `NVIDIA_API_KEY` | Free key from [build.nvidia.com](https://build.nvidia.com) |
+| `INTERNAL_API_KEY` | Any long random secret — must match `mcp/.env` |
+| `MCP_SHARED_SECRET` | Any long random secret — must match `mcp/.env` |
+| `MCP_SERVER_URL` | `http://localhost:3001` |
+
+**Gmail connector (optional):**
+
+| Variable | Value |
+|---|---|
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
+
+Add `http://localhost:3000/api/gmail/callback` to your OAuth client's **Authorized redirect URIs** in Google Cloud Console.
+
+**Other optional:**
+
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_CLOUDINARY_*` / `CLOUDINARY_API_SECRET` | Outgoing attachments |
+| `CALENDARFIC_API_KEY` | Holiday data ([calendarific.com](https://calendarific.com)) |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME` / `TELEGRAM_WEBHOOK_SECRET` | Telegram assistant |
+| `CRON_SECRET` | Recurring task reminders |
+
+Configure `mcp/.env` (copy from `mcp/.env.example`):
+
+```bash
+cd mcp
 cp .env.example .env
+# Set INTERNAL_API_KEY and MCP_SHARED_SECRET to the same values as web/.env
 ```
 
-Fill in `.env`:
-
-- `DATABASE_URL` / `DIRECT_URL` — your Postgres connection strings
-- `ENCRYPTION_KEY` — 32 random bytes, base64-encoded:
-  ```bash
-  node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-  ```
-- `BETTER_AUTH_SECRET` — generate the same way
-- `APP_URL` / `NEXT_PUBLIC_APP_URL` — `http://localhost:3000` for local dev
-- `RESEND_WEBHOOK_BASE_URL` — a public HTTPS tunnel to your dev server (e.g. `ngrok http 3000`), so Resend can deliver webhooks locally
-- `RESEND_OAUTH_CLIENT_ID` / `RESEND_OAUTH_CLIENT_SECRET` — TrueMail's own OAuth client for the "Connect with Resend" button (see below)
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — optional, for Google sign-in
-- `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` / `NEXT_PUBLIC_CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` — optional, for attachments
-- `NVIDIA_API_KEY` — optional, for AI features (a free-tier key from [build.nvidia.com](https://build.nvidia.com))
-- `CALENDARFIC_API_KEY` — optional, for the calendar's holiday data (a free-tier key from [calendarific.com](https://calendarific.com); the env var is spelled `CALENDARFIC`, not `CALENDARIFIC` — matches the name already used in `lib/holidays/calendarific.ts`)
-- `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME` / `TELEGRAM_WEBHOOK_SECRET` — optional, for the Telegram assistant (see [Telegram bot setup](#telegram-bot-setup) below)
-- `CRON_SECRET` — optional, for recurring task reminders (see [Recurring task reminders setup](#recurring-task-reminders-setup) below)
-
-Register your own Resend OAuth client (one-time, re-run whenever `APP_URL` changes):
+### 3. Database
 
 ```bash
-node scripts/register-resend-oauth-client.mjs http://localhost:3000
+cd web
+npx prisma migrate deploy
 ```
 
-Run migrations and start the dev server:
+### 4. Run
 
 ```bash
-npx prisma migrate dev
-npm run dev
+# Terminal 1 — MCP server
+cd mcp && npm run dev
+
+# Terminal 2 — Next.js app
+cd web && npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-### Telegram bot setup
+### 5. Seed demo data (optional)
 
-Optional — the app works fully without it.
+After signing up and completing onboarding:
 
-1. Message [@BotFather](https://t.me/BotFather) on Telegram, `/newbot`, and copy the token it gives you.
-2. Set `TELEGRAM_BOT_TOKEN` (the token), `TELEGRAM_BOT_USERNAME` (without the `@`), and `TELEGRAM_WEBHOOK_SECRET` (any random string — generate one with `node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`) in `.env`.
-3. Make sure `RESEND_WEBHOOK_BASE_URL` (or `APP_URL` in production) points at a public HTTPS URL — the same tunnel already used for Resend webhooks works here too.
-4. Register the webhook and command menu:
+```bash
+cd web
+npx prisma generate
+npx tsx scripts/seed-demo.ts your@email.com
+```
+
+---
+
+## MCP server
+
+See [`mcp/README.md`](mcp/README.md) for full details on the MCP server, its tools, and the auth bridging pattern.
+
+**Endpoint:** `POST http://localhost:3001/mcp`  
+**Transport:** Streamable HTTP (stateless — no SSE sessions)  
+**Health:** `GET http://localhost:3001/health`
+
+---
+
+## Telegram bot setup
+
+1. Message [@BotFather](https://t.me/BotFather) → `/newbot` → copy the token
+2. Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, and `TELEGRAM_WEBHOOK_SECRET` in `web/.env`
+3. Ensure `RESEND_WEBHOOK_BASE_URL` points at a public HTTPS URL
+4. Register the webhook:
    ```bash
-   node scripts/register-telegram-webhook.mjs
+   cd web && node scripts/register-telegram-webhook.mjs
    ```
-5. Start TrueMail, sign in, go to **Settings → Telegram → Connect Telegram**, and tap the link it opens.
-6. Try `/today` in the chat.
+5. Connect from **Settings → Connectors → Telegram** in the app
 
-### Recurring task reminders setup
+---
 
-Optional — needs Telegram connected (above) and `CRON_SECRET` set. A recurring task's reminder is delivered by hitting `GET /api/cron/reminders` every few minutes; there's no built-in scheduler, since a Next.js app has no long-running process to keep one in.
+## Recurring task reminders setup
 
-1. Set `CRON_SECRET` in `.env` (any random string — generate one with `node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`).
-2. Point an external scheduler at `$APP_URL/api/cron/reminders?secret=$CRON_SECRET` on a few-minutes interval — [cron-job.org](https://cron-job.org) (free) or a scheduled GitHub Actions workflow both work, since the route only needs a plain `GET`.
-3. Set your timezone once in **Settings** (or let it auto-detect from your browser), then create a recurring task — from **Tasks → New task → Repeat**, or by telling the Telegram bot something like "study every day at 9pm".
+Requires a Telegram connection and a cron service (e.g. [cron-job.org](https://cron-job.org)):
 
-### Scripts
+- Set `CRON_SECRET` in `web/.env`
+- Point a daily cron at `POST https://your-app/api/cron/reminders` with header `Authorization: Bearer <CRON_SECRET>`
 
-Run these from `web/`:
+---
 
-| Command                                                   | Description                                                              |
-| --------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `npm run dev`                                             | Start the dev server (Turbopack)                                         |
-| `npm run build`                                           | Production build                                                         |
-| `npm run start`                                           | Start the production server                                              |
-| `npm run lint`                                            | ESLint                                                                   |
-| `npm run test`                                            | Run the Vitest suite                                                     |
-| `node scripts/register-resend-oauth-client.mjs <APP_URL>` | Register/update TrueMail's Resend OAuth client                           |
-| `node scripts/cleanup-orphaned-webhooks.mjs [--delete]`   | Report (or remove) Resend webhooks that don't match a current connection |
-| `node scripts/register-telegram-webhook.mjs`              | Register/update the Telegram bot's webhook and command menu              |
-
-### Project structure
+## Project structure
 
 ```
-web/
-├─ app/            # Next.js App Router — pages and API routes
-│  ├─ (app)/       # Authenticated app: overview, inbox, compose, tasks, promises, calendar, Ask AI, settings, onboarding
-│  └─ api/         # Route handlers
-├─ components/      # React components (UI primitives under components/ui/)
-├─ lib/             # Server/client helpers — auth, Resend wrappers, crypto, etc.
-├─ prisma/          # Schema and migrations
-└─ scripts/         # One-off maintenance scripts
+true-mail/
+├── web/                  Next.js app (main product)
+│   ├── app/              Routes and pages
+│   ├── components/       React components
+│   ├── lib/              Business logic, AI, email, tasks, promises
+│   ├── prisma/           Schema and migrations
+│   └── scripts/          Dev utilities (seed, webhook registration)
+└── mcp/                  Standalone MCP server
+    └── src/
+        ├── tools/        12 MCP tool implementations
+        ├── server.ts     McpServer builder
+        ├── auth.ts       Shared-secret request validation
+        └── index.ts      Express + Streamable HTTP entrypoint
 ```
 
-## API documentation
-
-The REST API is documented as an OpenAPI 3.0 spec at [`web/public/openapi.json`](web/public/openapi.json), served statically at `/openapi.json`. Browse it with Swagger UI at `/api` (e.g. [http://localhost:3000/api](http://localhost:3000/api) in local dev) — covers domains, mailboxes, emails, drafts, labels, attachments, and the Resend connection/webhook endpoints. Auth (`/api/auth/*`) and the Resend OAuth redirect steps aren't included; those are covered by better-auth's own docs.
-
-## Contributing
-
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for how to get set up and submit changes.
-
-## Security
-
-Found a vulnerability? Please see [SECURITY.md](SECURITY.md) rather than opening a public issue.
+---
 
 ## License
 
-[MIT](LICENSE)
+MIT — see [LICENSE](LICENSE).

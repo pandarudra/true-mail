@@ -1,7 +1,8 @@
 .env.*
 brag-output/
-brag-output-2026-09-21-032947/
-brag-output-2026-09-24-183000/
-brag-output-2026-09-29-103000/
+brag-output-*/
 .superpowers/
 node_modules/
+audit.md
+skills-lock.json
+docs/superpowers/
