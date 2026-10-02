@@ -388,6 +388,41 @@ const TOOL_DEFS: ToolDef[] = [
   },
 ];
 
+// Extended tool set used when the agent calls tools via MCP (the /api/agent route).
+// Adds send_email and reply_email which require confirmation before executing.
+export const MCP_TOOL_DEFS: ToolDef[] = [
+  ...TOOL_DEFS,
+  {
+    name: "send_email",
+    description:
+      "Send a new email. Always call WITHOUT confirmed first to show a preview — only call with confirmed:true when the user explicitly approves.",
+    parameters: {
+      type: "object",
+      properties: {
+        to: { type: "array", items: { type: "string" }, description: "Recipient addresses" },
+        subject: { type: "string" },
+        text: { type: "string", description: "Plain text body" },
+        confirmed: { type: "boolean", description: "true = actually send; omit = preview only" },
+      },
+      required: ["to", "subject", "text"],
+    },
+  },
+  {
+    name: "reply_email",
+    description:
+      "Reply to an existing email. Always call WITHOUT confirmed first to show a preview — only call with confirmed:true when the user explicitly approves.",
+    parameters: {
+      type: "object",
+      properties: {
+        emailId: { type: "string" },
+        text: { type: "string", description: "Reply body" },
+        confirmed: { type: "boolean", description: "true = actually send; omit = preview only" },
+      },
+      required: ["emailId", "text"],
+    },
+  },
+];
+
 function buildToolHandlers(timezoneOffsetMinutes: number): ToolHandlerMap {
   return {
   search_emails: async (userId, args) =>
@@ -479,7 +514,12 @@ function buildToolHandlers(timezoneOffsetMinutes: number): ToolHandlerMap {
   };
 }
 
-export async function runAssistant(userId: string, turns: ChatTurn[], timezoneOffsetMinutes = 0): Promise<ChatResult> {
+export async function runAssistant(
+  userId: string,
+  turns: ChatTurn[],
+  timezoneOffsetMinutes = 0,
+  handlersOverride?: ToolHandlerMap
+): Promise<ChatResult> {
   // Routed around the tool loop entirely (see isChitChat's comment) rather
   // than relying on the model to decline every tool for a bare "hi".
   const lastTurn = turns.at(-1);
@@ -497,8 +537,8 @@ export async function runAssistant(userId: string, turns: ChatTurn[], timezoneOf
   const localNow = new Date(Date.now() - timezoneOffsetMinutes * 60000);
   return runToolLoop(userId, turns, {
     chatFn: chatWithTools,
-    handlers: buildToolHandlers(timezoneOffsetMinutes),
-    tools: TOOL_DEFS,
+    handlers: handlersOverride ?? buildToolHandlers(timezoneOffsetMinutes),
+    tools: MCP_TOOL_DEFS,
     systemPrompt: buildSystemPrompt(localNow),
   });
 }
