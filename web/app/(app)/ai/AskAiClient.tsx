@@ -41,7 +41,7 @@ export function AskAiClient({ initialMailboxes }: { initialMailboxes: Mailbox[] 
     // exit from this request, including a thrown one, clears loading and
     // surfaces something the user can act on.
     try {
-      const res = await fetch("/api/ai/chat", {
+      const res = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history, timezoneOffsetMinutes: new Date().getTimezoneOffset() }),
