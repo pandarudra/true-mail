@@ -7,8 +7,8 @@ import { DrawablyCard, DrawablyDivider } from "drawably/react";
 import { Button } from "@/components/ui/Button";
 import { authClient } from "@/lib/auth-client";
 import { useSmartBack } from "@/lib/use-smart-back";
-import { TelegramSection } from "@/components/settings/TelegramSection";
 import { TimezoneSection } from "@/components/settings/TimezoneSection";
+import { ConnectorsSection } from "@/components/settings/ConnectorsSection";
 
 type User = { name: string; email: string; image: string | null };
 
@@ -126,7 +126,7 @@ export function SettingsClient({ user: initialUser }: { user: User }) {
         </form>
 
         <TimezoneSection />
-        <TelegramSection />
+        <ConnectorsSection />
       </DrawablyCard>
     </main>
   );

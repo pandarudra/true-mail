@@ -20,6 +20,23 @@ export async function tmGet(userId: string, path: string): Promise<unknown> {
   return res.json();
 }
 
+export async function tmPatch(
+  userId: string,
+  path: string,
+  body: unknown
+): Promise<unknown> {
+  const res = await fetch(`${base()}${path}`, {
+    method: "PATCH",
+    headers: internalHeaders(userId),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`TrueMail PATCH ${path} → ${res.status}: ${text.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
 export async function tmPost(
   userId: string,
   path: string,

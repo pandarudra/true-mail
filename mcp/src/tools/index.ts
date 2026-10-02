@@ -6,6 +6,11 @@ import { registerExtractActions } from "./extract-actions.js";
 import { registerSendEmail } from "./send-email.js";
 import { registerReplyEmail } from "./reply-email.js";
 import { registerCreateTask } from "./create-task.js";
+import { registerSearchTasks } from "./search-tasks.js";
+import { registerCompleteTask } from "./complete-task.js";
+import { registerSearchPromises } from "./search-promises.js";
+import { registerCreatePromise } from "./create-promise.js";
+import { registerSearchCalendar } from "./search-calendar.js";
 
 export function registerAllTools(server: McpServer, userId: string) {
   registerSearchEmails(server, userId);
@@ -15,4 +20,9 @@ export function registerAllTools(server: McpServer, userId: string) {
   registerSendEmail(server, userId);
   registerReplyEmail(server, userId);
   registerCreateTask(server, userId);
+  registerSearchTasks(server, userId);
+  registerCompleteTask(server, userId);
+  registerSearchPromises(server, userId);
+  registerCreatePromise(server, userId);
+  registerSearchCalendar(server, userId);
 }
